@@ -56,6 +56,11 @@ Window::Window() : instance()
     }
 #endif
 
+    if (createSurface() != VK_SUCCESS)
+    {
+        throw std::runtime_error("Cannot create surface!");
+    }
+
     dev = selectPhysicalDev();
     if (createLogicalDevice() != VK_SUCCESS)
     {
@@ -111,6 +116,7 @@ Window::~Window()
 #endif
 
     vkDestroyDevice(logicalDev, nullptr);
+    vkDestroySurfaceKHR(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
     glfwDestroyWindow(window);
     glfwTerminate();
@@ -198,7 +204,7 @@ VkPhysicalDevice Window::selectPhysicalDev()
 
     for (auto const& devlist : devs)
     {
-        QueueFamilies fam(devlist);
+        QueueFamilies fam(devlist, surface);
         if (deviceSuitable(devlist) && fam.suitable())
         {
             dev = devlist;
@@ -215,11 +221,15 @@ VkPhysicalDevice Window::selectPhysicalDev()
 
 VkResult Window::createLogicalDevice()
 {
-    QueueFamilies queueFam(dev);
+    QueueFamilies queueFam(dev, surface);
     if (not queueFam.suitable())
     {
         throw std::runtime_error("Cannot create device queue on GPU.");
     }
+
+    std::vector<VkDeviceQueueCreateInfo> queueCreateList;
+
+
     float priority = 1.f;
     VkDeviceQueueCreateInfo createQueueInfo
     {
@@ -242,5 +252,14 @@ VkResult Window::createLogicalDevice()
     VkResult result = vkCreateDevice(dev, &createInfo, nullptr, &logicalDev);
     vkGetDeviceQueue(logicalDev, queueFam.graphicsFamily.value(), 0, &graphicsQueue);
     return result;
+}
+
+VkResult Window::createSurface()
+{
+#if defined(__linux__)
+    return glfwCreateWindowSurface(instance, window, nullptr, &surface);
+#else
+    throw std::runtime_error("To be done for Windows!");
+#endif
 }
 

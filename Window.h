@@ -21,6 +21,7 @@ protected:
     VkDebugUtilsMessengerEXT dbgMessenger;
     VkResult setupDebugMessenger();
     VkResult createLogicalDevice();
+    VkResult createSurface();
 
     template<typename TPtrExt, typename ...T_args>
     std::function<VkResult (T_args...)> getVkExtension(std::string const& extName)
@@ -67,6 +68,10 @@ private:
     VkInstance instance;
     VkPhysicalDevice dev;
     VkDevice logicalDev;
+
     VkQueue graphicsQueue;
+    VkQueue presentQueue;
+
+    VkSurfaceKHR surface;
 
 };
