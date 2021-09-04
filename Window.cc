@@ -78,18 +78,18 @@ void Window::mainLoop()
 
 VkDebugUtilsMessengerCreateInfoEXT Window::createDebugInfo()
 {
-    return VkDebugUtilsMessengerCreateInfoEXT
-            {
-                    .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-                    .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-                                       VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                                       VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-                    .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                                   VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                                   VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
-                    .pfnUserCallback = debugCallback,
-                    .pUserData = static_cast<void*>(this)
-            };
+    VkDebugUtilsMessengerCreateInfoEXT dbgInfo;
+    dbgInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    dbgInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                              VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                              VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    dbgInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                          VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                          VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    dbgInfo.pfnUserCallback = debugCallback;
+    dbgInfo.pUserData = reinterpret_cast<void*>(this);
+
+    return dbgInfo;
 }
 
 VkResult Window::setupDebugMessenger()
@@ -124,15 +124,14 @@ Window::~Window()
 
 VkResult Window::initInstance()
 {
-    VkApplicationInfo appInfo
-    {
-        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-        .pApplicationName = "Hello Vulkan!",
-        .applicationVersion = VK_MAKE_VERSION(1,0,0),
-        .pEngineName = "What?",
-        .engineVersion = VK_MAKE_VERSION(1,0,0),
-        .apiVersion = VK_API_VERSION_1_2
-    };
+    VkApplicationInfo appInfo;
+    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    appInfo.pApplicationName = "Hello Vulkan!";
+    appInfo.applicationVersion = VK_MAKE_VERSION(1,0,0);
+    appInfo.pEngineName = "What?";
+    appInfo.engineVersion = VK_MAKE_VERSION(1,0,0);
+    appInfo.apiVersion = VK_API_VERSION_1_2;
+
     auto extNeeded = getRequiredExts();
 
     uint32_t extCount;
@@ -168,30 +167,32 @@ VkResult Window::initInstance()
     auto dbgCreateInfo = createDebugInfo();
 #endif
 
-    VkInstanceCreateInfo createInfo
-    {
-        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+    VkInstanceCreateInfo createInfo;
+    memset(&createInfo,0,sizeof(VkInstanceCreateInfo));
+
+    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 #if ENABLE_VALIDATION_LAYERS == 1
-        .pNext = &dbgCreateInfo,
+    createInfo.pNext = &dbgCreateInfo;
 #else
-        .pNext = nullptr,
+    createInfo.pNext = nullptr;
 #endif
-        .pApplicationInfo = &appInfo,
+    createInfo.pApplicationInfo = &appInfo;
 #if ENABLE_VALIDATION_LAYERS == 1
-        .enabledLayerCount = static_cast<uint32_t>(validationLayers.size()),
-        .ppEnabledLayerNames = validationLayers.data(),
+    createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+    createInfo.ppEnabledLayerNames = validationLayers.data();
 #else
-        ..enabledLayerCount = 0,
+    createInfo.enabledLayerCount = 0;
 #endif
-        .enabledExtensionCount = static_cast<uint32_t>(extNeeded.size()),
-        .ppEnabledExtensionNames = extNeeded.data(),
-    };
+
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(extNeeded.size());
+    createInfo.ppEnabledExtensionNames = extNeeded.data();
+
     return vkCreateInstance(&createInfo, nullptr, &instance);
 }
 
 VkPhysicalDevice Window::selectPhysicalDev()
 {
-    VkPhysicalDevice dev = VK_NULL_HANDLE;
+    VkPhysicalDevice physDev = VK_NULL_HANDLE;
     uint32_t devCount = 0;
     vkEnumeratePhysicalDevices(instance, &devCount, nullptr);
     if (devCount == 0)
@@ -202,21 +203,21 @@ VkPhysicalDevice Window::selectPhysicalDev()
     std::vector<VkPhysicalDevice> devs(devCount);
     vkEnumeratePhysicalDevices(instance, &devCount, devs.data());
 
-    for (auto const& devlist : devs)
+    for (auto const& devList : devs)
     {
-        QueueFamilies fam(devlist, surface);
-        if (deviceSuitable(devlist) && fam.suitable())
+        QueueFamilies fam(devList, surface);
+        if (deviceSuitable(devList) && fam.suitable())
         {
-            dev = devlist;
+            physDev = devList;
             break;
         }
     }
 
-    if (dev == VK_NULL_HANDLE)
+    if (physDev == VK_NULL_HANDLE)
     {
         throw std::runtime_error("Could not find a Vulkan-capable GPU!");
     }
-    return dev;
+    return physDev;
 }
 
 VkResult Window::createLogicalDevice()
@@ -227,27 +228,25 @@ VkResult Window::createLogicalDevice()
         throw std::runtime_error("Cannot create device queue on GPU.");
     }
 
+
     std::vector<VkDeviceQueueCreateInfo> queueCreateList;
 
-
     float priority = 1.f;
-    VkDeviceQueueCreateInfo createQueueInfo
-    {
-        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = queueFam.graphicsFamily.value(),
-        .queueCount = 1,
-        .pQueuePriorities = &priority
-    };
+    VkDeviceQueueCreateInfo createQueueInfo = {};
 
-    VkPhysicalDeviceFeatures feat {
-    };
+    createQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    createQueueInfo.queueFamilyIndex = queueFam.graphicsFamily.value();
+    createQueueInfo.queueCount = 1;
+    createQueueInfo.pQueuePriorities = &priority;
 
-    VkDeviceCreateInfo createInfo {
-        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .queueCreateInfoCount = 1,
-        .pQueueCreateInfos = &createQueueInfo,
-        .pEnabledFeatures = &feat
-    };
+    VkPhysicalDeviceFeatures feat = {};
+
+    VkDeviceCreateInfo createInfo = {};
+
+    createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    createInfo.queueCreateInfoCount = 1;
+    createInfo.pQueueCreateInfos = &createQueueInfo;
+    createInfo.pEnabledFeatures = &feat;
 
     VkResult result = vkCreateDevice(dev, &createInfo, nullptr, &logicalDev);
     vkGetDeviceQueue(logicalDev, queueFam.graphicsFamily.value(), 0, &graphicsQueue);
@@ -259,7 +258,8 @@ VkResult Window::createSurface()
 #if defined(__linux__)
     return glfwCreateWindowSurface(instance, window, nullptr, &surface);
 #else
-    throw std::runtime_error("To be done for Windows!");
+    return glfwCreateWindowSurface(instance, window, nullptr, &surface);
+    // throw std::runtime_error("To be done for Windows!");
 #endif
 }
 

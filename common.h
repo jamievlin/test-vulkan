@@ -1,5 +1,9 @@
 #pragma once
 
+#if defined(_WIN32)
+#include <iso646.h>
+#endif
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -10,19 +14,16 @@
 
 #include <iostream>
 #include <algorithm>
+#include <functional>
 
 #include <memory>
-
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
 #include <optional>
 
+
 using std::optional;
 using std::nullopt;
 
-#ifdef DEBUG
-#define ENABLE_VALIDATION_LAYERS 1
-#else
-#define ENABLE_VALIDATION_LAYERS 0
-#endif
+#include "utils.h"
