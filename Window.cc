@@ -3,9 +3,12 @@
 #include "dbgCallBacks.h"
 #include "QueueFamilies.h"
 
-#define HEIGHT 768
-#define WIDTH 1024
-#define TITLE "Vulkan"
+
+
+
+const std::vector<char const*> requiredDevExtension = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
 
 std::vector<char const*> getRequiredExts()
 {
@@ -21,6 +24,45 @@ std::vector<char const*> getRequiredExts()
     return extensions;
 }
 
+std::vector<char const*> getRequiredDeviceExts()
+{
+    std::vector<char const*> extensions;
+    std::copy(
+            requiredDevExtension.begin(), requiredDevExtension.end(),
+            std::back_inserter(extensions));
+
+    return extensions;
+}
+
+bool checkDeviceExtensionSupport(
+        VkPhysicalDevice const& dev,
+        std::vector<char const*> requiredExts=requiredDevExtension)
+{
+    uint32_t extCount;
+    vkEnumerateDeviceExtensionProperties(dev, nullptr, &extCount, nullptr);
+    std::vector<VkExtensionProperties> extensions(extCount);
+    vkEnumerateDeviceExtensionProperties(dev, nullptr, &extCount, extensions.data());
+
+    std::unordered_set<std::string> extNames;
+    for (auto const& ext : extensions)
+    {
+        extNames.emplace(ext.extensionName);
+    }
+
+    bool deviceSupported=true;
+
+    for (auto const& extName : requiredExts)
+    {
+        if (extNames.find(std::string(extName)) == extNames.end())
+        {
+            deviceSupported = false;
+            break;
+        }
+    }
+
+    return deviceSupported;
+}
+
 bool deviceSuitable(VkPhysicalDevice const& dev)
 {
     VkPhysicalDeviceProperties properties;
@@ -29,8 +71,9 @@ bool deviceSuitable(VkPhysicalDevice const& dev)
     vkGetPhysicalDeviceProperties(dev, &properties);
     vkGetPhysicalDeviceFeatures(dev, &features);
 
-    return features.tessellationShader && features.geometryShader;
+    return checkDeviceExtensionSupport(dev) && features.tessellationShader && features.geometryShader;
 }
+
 
 
 Window::Window() : instance()
@@ -66,6 +109,12 @@ Window::Window() : instance()
     {
         throw std::runtime_error("Cannot create Vulkan logical device.");
     }
+
+    if (initSwapChain() != VK_SUCCESS)
+    {
+        throw std::runtime_error("Cannot create Vulkan Swap chain!");
+    }
+    getSwapChainImage();
 }
 
 void Window::mainLoop()
@@ -78,7 +127,7 @@ void Window::mainLoop()
 
 VkDebugUtilsMessengerCreateInfoEXT Window::createDebugInfo()
 {
-    VkDebugUtilsMessengerCreateInfoEXT dbgInfo;
+    VkDebugUtilsMessengerCreateInfoEXT dbgInfo = {};
     dbgInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     dbgInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
                               VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
@@ -106,6 +155,8 @@ VkResult Window::setupDebugMessenger()
 
 Window::~Window()
 {
+    vkDestroySwapchainKHR(logicalDev, swapChain, nullptr);
+
 #if ENABLE_VALIDATION_LAYERS == 1
     auto destroyFn = getVkExtensionVoid<
             PFN_vkDestroyDebugUtilsMessengerEXT,
@@ -114,7 +165,6 @@ Window::~Window()
             >("vkDestroyDebugUtilsMessengerEXT");
     destroyFn(instance, dbgMessenger, nullptr);
 #endif
-
     vkDestroyDevice(logicalDev, nullptr);
     vkDestroySurfaceKHR(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
@@ -124,7 +174,7 @@ Window::~Window()
 
 VkResult Window::initInstance()
 {
-    VkApplicationInfo appInfo;
+    VkApplicationInfo appInfo = {};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = "Hello Vulkan!";
     appInfo.applicationVersion = VK_MAKE_VERSION(1,0,0);
@@ -167,8 +217,7 @@ VkResult Window::initInstance()
     auto dbgCreateInfo = createDebugInfo();
 #endif
 
-    VkInstanceCreateInfo createInfo;
-    memset(&createInfo,0,sizeof(VkInstanceCreateInfo));
+    VkInstanceCreateInfo createInfo = {};
 
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 #if ENABLE_VALIDATION_LAYERS == 1
@@ -241,12 +290,15 @@ VkResult Window::createLogicalDevice()
 
     VkPhysicalDeviceFeatures feat = {};
 
-    VkDeviceCreateInfo createInfo = {};
+    auto deviceExts = getRequiredDeviceExts();
 
+    VkDeviceCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     createInfo.queueCreateInfoCount = 1;
     createInfo.pQueueCreateInfos = &createQueueInfo;
     createInfo.pEnabledFeatures = &feat;
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExts.size());
+    createInfo.ppEnabledExtensionNames = deviceExts.data();
 
     VkResult result = vkCreateDevice(dev, &createInfo, nullptr, &logicalDev);
     vkGetDeviceQueue(logicalDev, queueFam.graphicsFamily.value(), 0, &graphicsQueue);
@@ -258,8 +310,82 @@ VkResult Window::createSurface()
 #if defined(__linux__)
     return glfwCreateWindowSurface(instance, window, nullptr, &surface);
 #else
-    return glfwCreateWindowSurface(instance, window, nullptr, &surface);
-    // throw std::runtime_error("To be done for Windows!");
+    VkWin32SurfaceCreateInfoKHR createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+    createInfo.hwnd = glfwGetWin32Window(window);
+    createInfo.hinstance = GetModuleHandle(nullptr);
+
+    return vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface);
 #endif
 }
 
+VkResult Window::initSwapChain()
+{
+    SwapChainsDetail detail(dev, surface);
+    if (!detail.adequate())
+    {
+        throw std::runtime_error("Cannot create Swap Chain!");
+    }
+
+    swapchainFormat=detail.selectFmt();
+    swapchainExtent=detail.chooseSwapExtent(WIDTH, HEIGHT);
+
+    uint32_t imgCount=std::min(
+            detail.capabilities.minImageCount + 1,
+            detail.capabilities.maxImageCount);
+    if (imgCount == 0)
+    {
+        throw std::runtime_error("Driver does not support Image buffer!");
+    }
+
+    VkSwapchainCreateInfoKHR createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createInfo.surface = surface;
+    createInfo.minImageCount = imgCount;
+    createInfo.imageFormat = swapchainFormat.format;
+    createInfo.imageColorSpace = swapchainFormat.colorSpace;
+
+    createInfo.imageExtent = swapchainExtent;
+    createInfo.imageArrayLayers = 1;
+    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    QueueFamilies fam(dev, surface);
+    if (not fam.suitable())
+    {
+        throw std::runtime_error("Cannot create queue family!");
+    }
+    uint32_t idx[] = {
+            fam.graphicsFamily.value(),
+            fam.presentationFamily.value()
+    };
+
+    if (fam.graphicsFamily != fam.presentationFamily)
+    {
+        createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        createInfo.queueFamilyIndexCount = 2;
+        createInfo.pQueueFamilyIndices = idx;
+    }
+    else
+    {
+        createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        createInfo.queueFamilyIndexCount = 0;
+        createInfo.pQueueFamilyIndices = nullptr;
+    }
+
+    createInfo.preTransform = detail.capabilities.currentTransform;
+
+    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    createInfo.presentMode = detail.chooseSwapPresentMode();
+    createInfo.clipped = VK_TRUE;
+    createInfo.oldSwapchain = VK_NULL_HANDLE;
+
+    return vkCreateSwapchainKHR(logicalDev, &createInfo, nullptr, &swapChain);
+}
+
+void Window::getSwapChainImage()
+{
+    uint32_t imageCount;
+    vkGetSwapchainImagesKHR(logicalDev, swapChain, &imageCount, nullptr);
+    swapChainImages.resize(imageCount);
+    vkGetSwapchainImagesKHR(logicalDev, swapChain, &imageCount, swapChainImages.data());
+}

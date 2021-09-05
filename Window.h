@@ -1,6 +1,11 @@
 #pragma once
 
 #include "common.h"
+#include "SwapChains.h"
+
+#define HEIGHT 768
+#define WIDTH 1024
+#define TITLE "Vulkan"
 
 std::vector<char const*> getRequiredExts();
 bool deviceSuitable(VkPhysicalDevice const& dev);
@@ -22,6 +27,7 @@ protected:
     VkResult setupDebugMessenger();
     VkResult createLogicalDevice();
     VkResult createSurface();
+    VkResult initSwapChain();
 
     template<typename TPtrExt, typename ...T_args>
     std::function<VkResult (T_args...)> getVkExtension(std::string const& extName)
@@ -63,6 +69,8 @@ protected:
     VkDebugUtilsMessengerCreateInfoEXT createDebugInfo();
     VkPhysicalDevice selectPhysicalDev();
 
+    void getSwapChainImage();
+
 private:
     GLFWwindow* window;
     VkInstance instance;
@@ -73,5 +81,10 @@ private:
     VkQueue presentQueue;
 
     VkSurfaceKHR surface;
+    VkSwapchainKHR swapChain;
+
+    std::vector<VkImage> swapChainImages;
+    VkSurfaceFormatKHR swapchainFormat;
+    VkExtent2D swapchainExtent;
 
 };
