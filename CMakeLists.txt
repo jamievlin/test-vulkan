@@ -8,8 +8,8 @@ else()
     set(CMAKE_CXX_FLAGS "-Wall -Og -g")
 endif (WIN32)
 
-set(SOURCES Window.cc vkTest.cc validationTargets.cc dbgCallBacks.cc QueueFamilies.cc)
-set(HEADERS Window.h common.h validationTargets.h dbgCallBacks.h QueueFamilies.h utils.h)
+file(GLOB SOURCES "*.cc")
+file(GLOB HEADERS "*.h")
 add_executable(vkTest ${SOURCES} ${HEADERS})
 
 set(COMPILE_DEFINITIONS DEBUG)
