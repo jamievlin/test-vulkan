@@ -19,7 +19,7 @@ public:
     Window(Window const& win) = delete;
     Window& operator=(Window const& win) = delete;
 
-    void mainLoop();
+    int mainLoop();
 
 protected:
     VkResult initInstance();
@@ -28,6 +28,9 @@ protected:
     VkResult createLogicalDevice();
     VkResult createSurface();
     VkResult initSwapChain();
+    VkResult createRenderPasses();
+    VkResult createGraphicsPipeline();
+    bool createImageViews();
 
     template<typename TPtrExt, typename ...T_args>
     std::function<VkResult (T_args...)> getVkExtension(std::string const& extName)
@@ -86,5 +89,11 @@ private:
     std::vector<VkImage> swapChainImages;
     VkSurfaceFormatKHR swapchainFormat;
     VkExtent2D swapchainExtent;
+
+    std::vector<VkImageView> swapchainImgViews;
+    VkPipelineLayout pipelineLayout;
+    VkRenderPass renderPass;
+
+    VkPipeline pipeline;
 
 };

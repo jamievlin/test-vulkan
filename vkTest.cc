@@ -4,5 +4,5 @@
 int main()
 {
     Window win1;
-    win1.mainLoop();
+    return win1.mainLoop();
 }
