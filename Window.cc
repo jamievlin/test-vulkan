@@ -103,6 +103,10 @@ Window::Window() : instance()
     createFrameBuffers();
     CHECK_VK_SUCCESS(createCommandPool(), "Cannot create command pool!");
     CHECK_VK_SUCCESS(createCmdBuffers(), "Cannot create command buffers!")
+
+    CHECK_VK_SUCCESS(createSemaphores(imgAvailable), "Cannot create semaphores!");
+    CHECK_VK_SUCCESS(createSemaphores(renderFinished), "Cannot create semaphores!");
+
 }
 
 int Window::mainLoop()
@@ -111,8 +115,10 @@ int Window::mainLoop()
     while (not glfwWindowShouldClose(window))
     {
         glfwPollEvents();
+        drawFrame();
     }
 
+    vkDeviceWaitIdle(logicalDev);
     return 0;
 }
 
@@ -151,6 +157,9 @@ VkResult Window::setupDebugMessenger()
 
 Window::~Window()
 {
+    vkDestroySemaphore(logicalDev, imgAvailable, nullptr);
+    vkDestroySemaphore(logicalDev, renderFinished, nullptr);
+
     vkDestroyCommandPool(logicalDev, cmdPool, nullptr);
     for (auto& fb : frameBuffers)
     {
@@ -296,20 +305,30 @@ VkResult Window::createLogicalDevice()
     createQueueInfo.queueCount = 1;
     createQueueInfo.pQueuePriorities = &priority;
 
+    VkDeviceQueueCreateInfo presentationQueueInfo = {};
+    presentationQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    presentationQueueInfo.queueFamilyIndex = queueFam.presentationFamily.value();
+    presentationQueueInfo.queueCount = 1;
+    presentationQueueInfo.pQueuePriorities = &priority;
+
+    VkDeviceQueueCreateInfo queues[] = {createQueueInfo, presentationQueueInfo};
+
     VkPhysicalDeviceFeatures feat = {};
 
     auto deviceExts = getRequiredDeviceExts();
 
     VkDeviceCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    createInfo.queueCreateInfoCount = 1;
-    createInfo.pQueueCreateInfos = &createQueueInfo;
+    createInfo.queueCreateInfoCount = 2;
+    createInfo.pQueueCreateInfos = queues;
     createInfo.pEnabledFeatures = &feat;
     createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExts.size());
     createInfo.ppEnabledExtensionNames = deviceExts.data();
 
     VkResult result = vkCreateDevice(dev, &createInfo, nullptr, &logicalDev);
     vkGetDeviceQueue(logicalDev, queueFam.graphicsFamily.value(), 0, &graphicsQueue);
+    vkGetDeviceQueue(logicalDev, queueFam.presentationFamily.value(), 0, &presentQueue);
+
     return result;
 }
 
@@ -600,12 +619,24 @@ VkResult Window::createRenderPasses()
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentRef;
 
+    VkSubpassDependency dep = {};
+    dep.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dep.dstSubpass = 0;
+    dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dep.srcAccessMask = 0;
+
+    dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+
     VkRenderPassCreateInfo renderPassCreateInfo = {};
     renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassCreateInfo.attachmentCount = 1;
     renderPassCreateInfo.pAttachments = &colorAttachment;
     renderPassCreateInfo.subpassCount = 1;
     renderPassCreateInfo.pSubpasses = &subpass;
+    renderPassCreateInfo.dependencyCount = 1;
+    renderPassCreateInfo.pDependencies = &dep;
 
     return vkCreateRenderPass(logicalDev, &renderPassCreateInfo, nullptr, &renderPass);
 }
@@ -706,4 +737,54 @@ void Window::recordCommands()
                 "Cannot end command buffer!");
 
     }
+}
+
+void Window::drawFrame()
+{
+    // code goes here
+
+    uint32_t imgIndex;
+    vkAcquireNextImageKHR(logicalDev, swapChain, UINT64_MAX, imgAvailable, VK_NULL_HANDLE, &imgIndex);
+
+    // wait then for img to become available
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    VkSemaphore waitSems[] = { imgAvailable };
+    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = waitSems;
+    submitInfo.pWaitDstStageMask = waitStages;
+
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = cmdBuffers.data() + imgIndex;
+
+    VkSemaphore signals[] = { renderFinished };
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = signals;
+
+    CHECK_VK_SUCCESS(
+            vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE),
+            "Cannot submit draw queue!");
+
+    // presentation
+    VkPresentInfoKHR presentInfo = {};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = signals;
+
+    VkSwapchainKHR chains[] = {swapChain};
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = chains;
+    presentInfo.pImageIndices = &imgIndex;
+    presentInfo.pResults = nullptr;
+
+    vkQueuePresentKHR(presentQueue, &presentInfo);
+}
+
+VkResult Window::createSemaphores(VkSemaphore& sem)
+{
+    VkSemaphoreCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    return vkCreateSemaphore(logicalDev, &createInfo, nullptr, &sem);
 }

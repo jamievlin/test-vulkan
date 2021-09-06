@@ -35,10 +35,13 @@ protected:
     VkResult createFrameBuffers();
     VkResult createCommandPool();
     VkResult createCmdBuffers();
+    VkResult createSemaphores(VkSemaphore& sem);
     bool createImageViews();
 
     void recordCommands();
+    void drawFrame();
 
+    // vk extension functions
     template<typename TPtrExt, typename ...T_args>
     std::function<VkResult (T_args...)> getVkExtension(std::string const& extName)
     {
@@ -107,4 +110,6 @@ private:
 
     VkCommandPool cmdPool;
     std::vector<VkCommandBuffer> cmdBuffers;
+
+    VkSemaphore imgAvailable, renderFinished;
 };
