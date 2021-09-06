@@ -23,14 +23,21 @@ public:
 
 protected:
     VkResult initInstance();
+#if defined(ENABLE_VALIDATION_LAYERS)
     VkDebugUtilsMessengerEXT dbgMessenger;
     VkResult setupDebugMessenger();
+#endif
     VkResult createLogicalDevice();
     VkResult createSurface();
     VkResult initSwapChain();
     VkResult createRenderPasses();
     VkResult createGraphicsPipeline();
+    VkResult createFrameBuffers();
+    VkResult createCommandPool();
+    VkResult createCmdBuffers();
     bool createImageViews();
+
+    void recordCommands();
 
     template<typename TPtrExt, typename ...T_args>
     std::function<VkResult (T_args...)> getVkExtension(std::string const& extName)
@@ -68,8 +75,9 @@ protected:
             return;
         };
     }
-
+#if defined(ENABLE_VALIDATION_LAYERS)
     VkDebugUtilsMessengerCreateInfoEXT createDebugInfo();
+#endif
     VkPhysicalDevice selectPhysicalDev();
 
     void getSwapChainImage();
@@ -95,5 +103,8 @@ private:
     VkRenderPass renderPass;
 
     VkPipeline pipeline;
+    std::vector<VkFramebuffer> frameBuffers;
 
+    VkCommandPool cmdPool;
+    std::vector<VkCommandBuffer> cmdBuffers;
 };

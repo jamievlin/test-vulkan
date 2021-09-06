@@ -4,7 +4,7 @@
 #include "QueueFamilies.h"
 #include "Shaders.h"
 
-
+#define CHECK_VK_SUCCESS(fn, msg) if ((fn) != VK_SUCCESS) { throw std::runtime_error(msg); }
 
 const std::vector<char const*> requiredDevExtension = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
@@ -86,54 +86,28 @@ Window::Window() : instance()
     window = glfwCreateWindow(WIDTH, HEIGHT, TITLE, nullptr, nullptr);
 
     // instance creation
-    if (initInstance() != VK_SUCCESS)
-    {
-        throw std::runtime_error("Cannot create Vulkan instance.");
-    }
-
+    CHECK_VK_SUCCESS(initInstance(), "Cannot create Vulkan instance.");
     // setup messenger
 #if ENABLE_VALIDATION_LAYERS == 1
-    if (setupDebugMessenger() != VK_SUCCESS)
-    {
-        throw std::runtime_error("Cannot set up debug messenger!");
-    }
+    CHECK_VK_SUCCESS(setupDebugMessenger(), "Cannot set up debug messenger!");
 #endif
-
-    if (createSurface() != VK_SUCCESS)
-    {
-        throw std::runtime_error("Cannot create surface!");
-    }
-
+    CHECK_VK_SUCCESS(createSurface(), "Cannot create surface!");
     dev = selectPhysicalDev();
-    if (createLogicalDevice() != VK_SUCCESS)
-    {
-        throw std::runtime_error("Cannot create Vulkan logical device.");
-    }
-
-    if (initSwapChain() != VK_SUCCESS)
-    {
-        throw std::runtime_error("Cannot create Vulkan Swap chain!");
-    }
+    CHECK_VK_SUCCESS(createLogicalDevice(), "Cannot create Vulkan logical device.");
+    CHECK_VK_SUCCESS(initSwapChain(), "Cannot create Vulkan Swap chain!");
     getSwapChainImage();
+    createImageViews();
 
-    if (not createImageViews())
-    {
-        throw std::runtime_error("Cannot create image views!");
-    }
-
-    if (createRenderPasses() != VK_SUCCESS)
-    {
-        throw std::runtime_error("Cannot create render passes!");
-    }
-
-    if (createGraphicsPipeline() != VK_SUCCESS)
-    {
-        throw std::runtime_error("Cannot create graphics pipeline!");
-    }
+    CHECK_VK_SUCCESS(createRenderPasses(), "Cannot create render passes!");
+    CHECK_VK_SUCCESS(createGraphicsPipeline(), "Cannot create graphics pipeline!");
+    createFrameBuffers();
+    CHECK_VK_SUCCESS(createCommandPool(), "Cannot create command pool!");
+    CHECK_VK_SUCCESS(createCmdBuffers(), "Cannot create command buffers!")
 }
 
 int Window::mainLoop()
 {
+    recordCommands();
     while (not glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -141,6 +115,8 @@ int Window::mainLoop()
 
     return 0;
 }
+
+#if defined(ENABLE_VALIDATION_LAYERS)
 
 VkDebugUtilsMessengerCreateInfoEXT Window::createDebugInfo()
 {
@@ -158,6 +134,7 @@ VkDebugUtilsMessengerCreateInfoEXT Window::createDebugInfo()
     return dbgInfo;
 }
 
+
 VkResult Window::setupDebugMessenger()
 {
     auto createInfo = createDebugInfo();
@@ -170,8 +147,15 @@ VkResult Window::setupDebugMessenger()
     return createDbgFn(instance, &createInfo, nullptr, &this->dbgMessenger);
 }
 
+#endif
+
 Window::~Window()
 {
+    vkDestroyCommandPool(logicalDev, cmdPool, nullptr);
+    for (auto& fb : frameBuffers)
+    {
+        vkDestroyFramebuffer(logicalDev, fb, nullptr);
+    }
     vkDestroyPipeline(logicalDev, pipeline, nullptr);
     vkDestroyRenderPass(logicalDev, renderPass, nullptr);
     vkDestroyPipelineLayout(logicalDev, pipelineLayout, nullptr);
@@ -437,13 +421,10 @@ bool Window::createImageViews()
         createInfo.subresourceRange.levelCount = 1;
         createInfo.subresourceRange.baseArrayLayer = 0;
         createInfo.subresourceRange.layerCount = 1;
-        auto ret = vkCreateImageView(
-                logicalDev, &createInfo, nullptr, swapchainImgViews.data() + i);
-        if (ret != VK_SUCCESS)
-        {
-            success = false;
-            break;
-        }
+
+        CHECK_VK_SUCCESS(
+                vkCreateImageView(logicalDev, &createInfo, nullptr, swapchainImgViews.data() + i),
+                "Cannot create image view!")
     }
 
     return success;
@@ -587,11 +568,7 @@ VkResult Window::createGraphicsPipeline()
     pipelineCreateInfo.basePipelineIndex = -1;
 
     auto retFinal = vkCreateGraphicsPipelines(
-            logicalDev,
-            VK_NULL_HANDLE,
-            1,
-            &pipelineCreateInfo,
-            nullptr,
+            logicalDev, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr,
             &pipeline);
     vkDestroyShaderModule(logicalDev, vertShader, nullptr);
     vkDestroyShaderModule(logicalDev, fragShader, nullptr);
@@ -631,4 +608,102 @@ VkResult Window::createRenderPasses()
     renderPassCreateInfo.pSubpasses = &subpass;
 
     return vkCreateRenderPass(logicalDev, &renderPassCreateInfo, nullptr, &renderPass);
+}
+
+VkResult Window::createFrameBuffers()
+{
+    for (auto const& imgView : swapchainImgViews)
+    {
+        frameBuffers.emplace_back(VkFramebuffer());
+        auto& pt = frameBuffers.back();
+
+        VkImageView attachments[] = { imgView };
+
+        VkFramebufferCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        createInfo.renderPass = renderPass;
+        createInfo.attachmentCount = 1;
+        createInfo.pAttachments = attachments;
+        createInfo.width = swapchainExtent.width;
+        createInfo.height = swapchainExtent.height;
+        createInfo.layers = 1;
+
+        CHECK_VK_SUCCESS(
+                vkCreateFramebuffer(logicalDev, &createInfo, nullptr, &pt),
+                "Cannot create framebuffer!");
+    }
+
+    return VK_SUCCESS;
+}
+
+VkResult Window::createCommandPool()
+{
+    QueueFamilies queueFam(dev, surface);
+    if (not queueFam.suitable())
+    {
+        throw std::runtime_error("Queue family failed!");
+    }
+
+    VkCommandPoolCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    createInfo.queueFamilyIndex = queueFam.graphicsFamily.value();
+    createInfo.flags = 0;
+
+    return vkCreateCommandPool(logicalDev, &createInfo, nullptr, &cmdPool);
+}
+
+VkResult Window::createCmdBuffers()
+{
+    cmdBuffers.resize(frameBuffers.size());
+    VkCommandBufferAllocateInfo allocateInfo = {};
+    allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocateInfo.commandPool = cmdPool;
+    allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    // 1 command buffer per frame buffer
+    allocateInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
+
+    return vkAllocateCommandBuffers(logicalDev, &allocateInfo, cmdBuffers.data());
+}
+
+void Window::recordCommands()
+{
+    //begin buffer recording
+    for (size_t i=0; i < cmdBuffers.size(); ++i)
+    {
+        auto const& cmdBuf = cmdBuffers[i];
+
+        VkCommandBufferBeginInfo beginInfo = {};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = 0;
+        beginInfo.pInheritanceInfo = nullptr;
+
+        CHECK_VK_SUCCESS(
+                vkBeginCommandBuffer(cmdBuf, &beginInfo),
+                "Failed to begin buffer recording!");
+
+        VkRenderPassBeginInfo renderPassBeginInfo = {};
+        renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassBeginInfo.renderPass = renderPass;
+        renderPassBeginInfo.framebuffer = frameBuffers[i];
+
+        renderPassBeginInfo.renderArea.offset = {0,0};
+        renderPassBeginInfo.renderArea.extent = swapchainExtent;
+
+        VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+        renderPassBeginInfo.clearValueCount = 1;
+        renderPassBeginInfo.pClearValues = &clearColor;
+
+        vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+        // actual drawing command :)
+        vkCmdDraw(cmdBuf, 3, 1, 0, 0);
+
+        vkCmdEndRenderPass(cmdBuf);
+
+        CHECK_VK_SUCCESS(
+                vkEndCommandBuffer(cmdBuf),
+                "Cannot end command buffer!");
+
+    }
 }
