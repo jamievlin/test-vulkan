@@ -1,3 +1,5 @@
+#if defined(ENABLE_VALIDATION_LAYERS)
+
 #include "dbgCallBacks.h"
 
 VkBool32 debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT msgSeverity, VkDebugUtilsMessageTypeFlagsEXT msgType,
@@ -6,3 +8,5 @@ VkBool32 debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT msgSeverity, VkDeb
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
     return VK_FALSE;
 }
+
+#endif

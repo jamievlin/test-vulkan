@@ -1,3 +1,5 @@
+#if defined(ENABLE_VALIDATION_LAYERS)
+
 #include "validationTargets.h"
 
 bool checkValidationSupport()
@@ -26,3 +28,4 @@ bool checkValidationSupport()
 
     return true;
 }
+#endif
