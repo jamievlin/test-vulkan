@@ -3,6 +3,7 @@
 #include "common.h"
 #include "SwapChains.h"
 #include "FrameSemaphores.h"
+#include "SwapchainSupport.h"
 
 std::vector<char const*> getRequiredExts();
 bool deviceSuitable(VkPhysicalDevice const& dev);
@@ -30,11 +31,8 @@ protected:
     VkResult initSwapChain();
     VkResult createRenderPasses();
     VkResult createGraphicsPipeline();
-    VkResult createFrameBuffers();
     VkResult createCommandPool();
     VkResult createCmdBuffers();
-    bool createImageViews();
-
     void recordCommands();
     void drawFrame();
 
@@ -101,13 +99,11 @@ private:
     VkSurfaceFormatKHR swapchainFormat = {};
     VkExtent2D swapchainExtent = {};
 
-    std::vector<VkImageView> swapchainImgViews;
+    std::vector<SwapchainImageSupport> swapchainSupport;
     VkPipelineLayout pipelineLayout = {};
     VkRenderPass renderPass = {};
 
     VkPipeline pipeline = {};
-    std::vector<VkFramebuffer> frameBuffers;
-    std::vector<VkFence> frameBufferFences;
 
     VkCommandPool cmdPool = {};
     std::vector<VkCommandBuffer> cmdBuffers;

@@ -40,7 +40,7 @@ std::vector<char const*> getRequiredDeviceExts()
 
 bool checkDeviceExtensionSupport(
         VkPhysicalDevice const& dev,
-        std::vector<char const*> requiredExts=requiredDevExtension)
+        std::vector<char const*> const& requiredExts=requiredDevExtension)
 {
     uint32_t extCount;
     vkEnumerateDeviceExtensionProperties(dev, nullptr, &extCount, nullptr);
@@ -101,11 +101,18 @@ Window::Window(size_t const& width, size_t const& height, std::string title) :
     CHECK_VK_SUCCESS(createLogicalDevice(), "Cannot create Vulkan logical device.");
     CHECK_VK_SUCCESS(initSwapChain(), "Cannot create Vulkan Swap chain!");
     getSwapChainImage();
-    createImageViews();
-
     CHECK_VK_SUCCESS(createRenderPasses(), "Cannot create render passes!");
     CHECK_VK_SUCCESS(createGraphicsPipeline(), "Cannot create graphics pipeline!");
-    createFrameBuffers();
+
+    std::transform(swapChainImages.begin(), swapChainImages.end(),
+                   std::back_inserter(swapchainSupport),
+                   [this, &fmt=swapchainFormat.format](VkImage& swapChainImg)
+                   {
+                       return SwapchainImageSupport(
+                               &(this->logicalDev), this->renderPass, this->swapchainExtent,
+                               swapChainImg, fmt);
+                   });
+
     CHECK_VK_SUCCESS(createCommandPool(), "Cannot create command pool!");
     CHECK_VK_SUCCESS(createCmdBuffers(), "Cannot create command buffers!")
 
@@ -167,17 +174,11 @@ Window::~Window()
     frameSemaphores.clear();
 
     vkDestroyCommandPool(logicalDev, cmdPool, nullptr);
-    for (auto& fb : frameBuffers)
-    {
-        vkDestroyFramebuffer(logicalDev, fb, nullptr);
-    }
     vkDestroyPipeline(logicalDev, pipeline, nullptr);
     vkDestroyRenderPass(logicalDev, renderPass, nullptr);
     vkDestroyPipelineLayout(logicalDev, pipelineLayout, nullptr);
-    for (auto& view : swapchainImgViews)
-    {
-        vkDestroyImageView(logicalDev, view, nullptr);
-    }
+
+    swapchainSupport.clear();
     vkDestroySwapchainKHR(logicalDev, swapChain, nullptr);
 
 #if ENABLE_VALIDATION_LAYERS == 1
@@ -423,38 +424,6 @@ void Window::getSwapChainImage()
     vkGetSwapchainImagesKHR(logicalDev, swapChain, &imageCount, swapChainImages.data());
 }
 
-bool Window::createImageViews()
-{
-    swapchainImgViews.resize(swapChainImages.size());
-    bool success=true;
-
-    for (size_t i = 0; i < swapChainImages.size(); ++i)
-    {
-        VkImageViewCreateInfo createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        createInfo.image = swapChainImages[i];
-        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        createInfo.format = swapchainFormat.format;
-
-        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        createInfo.subresourceRange.baseMipLevel = 0;
-        createInfo.subresourceRange.levelCount = 1;
-        createInfo.subresourceRange.baseArrayLayer = 0;
-        createInfo.subresourceRange.layerCount = 1;
-
-        CHECK_VK_SUCCESS(
-                vkCreateImageView(logicalDev, &createInfo, nullptr, swapchainImgViews.data() + i),
-                "Cannot create image view!")
-    }
-
-    return success;
-}
-
 VkResult Window::createGraphicsPipeline()
 {
     auto [vertShader, ret] = Shaders::createShaderModule(logicalDev, "main.vert.spv");
@@ -647,32 +616,6 @@ VkResult Window::createRenderPasses()
     return vkCreateRenderPass(logicalDev, &renderPassCreateInfo, nullptr, &renderPass);
 }
 
-VkResult Window::createFrameBuffers()
-{
-    for (auto const& imgView : swapchainImgViews)
-    {
-        frameBuffers.emplace_back(VkFramebuffer());
-        auto& pt = frameBuffers.back();
-
-        VkImageView attachments[] = { imgView };
-
-        VkFramebufferCreateInfo createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        createInfo.renderPass = renderPass;
-        createInfo.attachmentCount = 1;
-        createInfo.pAttachments = attachments;
-        createInfo.width = swapchainExtent.width;
-        createInfo.height = swapchainExtent.height;
-        createInfo.layers = 1;
-
-        CHECK_VK_SUCCESS(
-                vkCreateFramebuffer(logicalDev, &createInfo, nullptr, &pt),
-                "Cannot create framebuffer!");
-    }
-
-    return VK_SUCCESS;
-}
-
 VkResult Window::createCommandPool()
 {
     QueueFamilies queueFam(dev, surface);
@@ -691,7 +634,7 @@ VkResult Window::createCommandPool()
 
 VkResult Window::createCmdBuffers()
 {
-    cmdBuffers.resize(frameBuffers.size());
+    cmdBuffers.resize(swapChainImages.size());
     VkCommandBufferAllocateInfo allocateInfo = {};
     allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocateInfo.commandPool = cmdPool;
@@ -721,7 +664,7 @@ void Window::recordCommands()
         VkRenderPassBeginInfo renderPassBeginInfo = {};
         renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassBeginInfo.renderPass = renderPass;
-        renderPassBeginInfo.framebuffer = frameBuffers[i];
+        renderPassBeginInfo.framebuffer = swapchainSupport[i].frameBuffer;
 
         renderPassBeginInfo.renderArea.offset = {0,0};
         renderPassBeginInfo.renderArea.extent = swapchainExtent;
