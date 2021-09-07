@@ -27,9 +27,12 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <optional>
+#include <string>
 
 
 using std::optional;
 using std::nullopt;
 
 #include "utils.h"
+
+#define CHECK_VK_SUCCESS(fn, msg) if ((fn) != VK_SUCCESS) { throw std::runtime_error(msg); }

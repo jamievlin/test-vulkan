@@ -2,18 +2,16 @@
 
 #include "common.h"
 #include "SwapChains.h"
-
-#define HEIGHT 768
-#define WIDTH 1024
-#define TITLE "Vulkan"
+#include "FrameSemaphores.h"
 
 std::vector<char const*> getRequiredExts();
 bool deviceSuitable(VkPhysicalDevice const& dev);
+constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
 
 class Window
 {
 public:
-    Window();
+    Window(size_t const& width, size_t const& height, std::string title);
     ~Window();
 
     Window(Window const& win) = delete;
@@ -35,7 +33,6 @@ protected:
     VkResult createFrameBuffers();
     VkResult createCommandPool();
     VkResult createCmdBuffers();
-    VkResult createSemaphores(VkSemaphore& sem);
     bool createImageViews();
 
     void recordCommands();
@@ -86,30 +83,35 @@ protected:
     void getSwapChainImage();
 
 private:
-    GLFWwindow* window;
-    VkInstance instance;
-    VkPhysicalDevice dev;
-    VkDevice logicalDev;
+    size_t width, height;
+    std::string title;
 
-    VkQueue graphicsQueue;
-    VkQueue presentQueue;
+    GLFWwindow* window = nullptr;
+    VkInstance instance = {};
+    VkPhysicalDevice dev = {};
+    VkDevice logicalDev = {};
 
-    VkSurfaceKHR surface;
-    VkSwapchainKHR swapChain;
+    VkQueue graphicsQueue = {};
+    VkQueue presentQueue = {};
+
+    VkSurfaceKHR surface = {};
+    VkSwapchainKHR swapChain = {};
 
     std::vector<VkImage> swapChainImages;
-    VkSurfaceFormatKHR swapchainFormat;
-    VkExtent2D swapchainExtent;
+    VkSurfaceFormatKHR swapchainFormat = {};
+    VkExtent2D swapchainExtent = {};
 
     std::vector<VkImageView> swapchainImgViews;
-    VkPipelineLayout pipelineLayout;
-    VkRenderPass renderPass;
+    VkPipelineLayout pipelineLayout = {};
+    VkRenderPass renderPass = {};
 
-    VkPipeline pipeline;
+    VkPipeline pipeline = {};
     std::vector<VkFramebuffer> frameBuffers;
+    std::vector<VkFence> frameBufferFences;
 
-    VkCommandPool cmdPool;
+    VkCommandPool cmdPool = {};
     std::vector<VkCommandBuffer> cmdBuffers;
 
-    VkSemaphore imgAvailable, renderFinished;
+    std::vector<FrameSemaphores> frameSemaphores;
+    size_t currentFrame = 0;
 };

@@ -1,10 +1,14 @@
 #include "Window.h"
+
+#include <utility>
+
+#if defined(ENABLE_VALIDATION_LAYERS)
 #include "validationTargets.h"
 #include "dbgCallBacks.h"
+#endif
+
 #include "QueueFamilies.h"
 #include "Shaders.h"
-
-#define CHECK_VK_SUCCESS(fn, msg) if ((fn) != VK_SUCCESS) { throw std::runtime_error(msg); }
 
 const std::vector<char const*> requiredDevExtension = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
@@ -74,16 +78,17 @@ bool deviceSuitable(VkPhysicalDevice const& dev)
     return checkDeviceExtensionSupport(dev) && features.tessellationShader && features.geometryShader;
 }
 
-
-
-Window::Window() : instance()
+Window::Window(size_t const& width, size_t const& height, std::string title) :
+    instance(), width(width), height(height), title(std::move(title))
 {
     glfwInit();
 
     // window creation
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    window = glfwCreateWindow(WIDTH, HEIGHT, TITLE, nullptr, nullptr);
+    window = glfwCreateWindow(
+            static_cast<int>(width), static_cast<int>(height),
+            title.c_str(), nullptr, nullptr);
 
     // instance creation
     CHECK_VK_SUCCESS(initInstance(), "Cannot create Vulkan instance.");
@@ -104,9 +109,11 @@ Window::Window() : instance()
     CHECK_VK_SUCCESS(createCommandPool(), "Cannot create command pool!");
     CHECK_VK_SUCCESS(createCmdBuffers(), "Cannot create command buffers!")
 
-    CHECK_VK_SUCCESS(createSemaphores(imgAvailable), "Cannot create semaphores!");
-    CHECK_VK_SUCCESS(createSemaphores(renderFinished), "Cannot create semaphores!");
-
+    frameSemaphores.clear();
+    for (size_t i=0; i<MAX_FRAMES_IN_FLIGHT; ++i)
+    {
+        frameSemaphores.emplace_back(&logicalDev);
+    }
 }
 
 int Window::mainLoop()
@@ -157,8 +164,7 @@ VkResult Window::setupDebugMessenger()
 
 Window::~Window()
 {
-    vkDestroySemaphore(logicalDev, imgAvailable, nullptr);
-    vkDestroySemaphore(logicalDev, renderFinished, nullptr);
+    frameSemaphores.clear();
 
     vkDestroyCommandPool(logicalDev, cmdPool, nullptr);
     for (auto& fb : frameBuffers)
@@ -355,7 +361,7 @@ VkResult Window::initSwapChain()
     }
 
     swapchainFormat=detail.selectFmt();
-    swapchainExtent=detail.chooseSwapExtent(WIDTH, HEIGHT);
+    swapchainExtent=detail.chooseSwapExtent(width, height);
 
     uint32_t imgCount=std::min(
             detail.capabilities.minImageCount + 1,
@@ -742,8 +748,14 @@ void Window::recordCommands()
 void Window::drawFrame()
 {
     // code goes here
-
     uint32_t imgIndex;
+    VkSemaphore& imgAvailable = frameSemaphores[currentFrame].imgAvailable;
+    VkSemaphore& renderFinished = frameSemaphores[currentFrame].imgAvailable;
+    VkFence& inFlightFence = frameSemaphores[currentFrame].inFlight;
+
+    vkWaitForFences(logicalDev, 1, &inFlightFence, VK_TRUE, UINT64_MAX);
+    vkResetFences(logicalDev, 1, &inFlightFence);
+
     vkAcquireNextImageKHR(logicalDev, swapChain, UINT64_MAX, imgAvailable, VK_NULL_HANDLE, &imgIndex);
 
     // wait then for img to become available
@@ -764,7 +776,7 @@ void Window::drawFrame()
     submitInfo.pSignalSemaphores = signals;
 
     CHECK_VK_SUCCESS(
-            vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE),
+            vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence),
             "Cannot submit draw queue!");
 
     // presentation
@@ -780,11 +792,6 @@ void Window::drawFrame()
     presentInfo.pResults = nullptr;
 
     vkQueuePresentKHR(presentQueue, &presentInfo);
-}
 
-VkResult Window::createSemaphores(VkSemaphore& sem)
-{
-    VkSemaphoreCreateInfo createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    return vkCreateSemaphore(logicalDev, &createInfo, nullptr, &sem);
+    currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
