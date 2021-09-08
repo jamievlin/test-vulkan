@@ -104,20 +104,12 @@ Window::Window(size_t const& width, size_t const& height, std::string title) :
     CHECK_VK_SUCCESS(createRenderPasses(), "Cannot create render passes!");
     CHECK_VK_SUCCESS(createGraphicsPipeline(), "Cannot create graphics pipeline!");
 
-    std::transform(swapChainImages.begin(), swapChainImages.end(),
-                   std::back_inserter(swapchainSupport),
-                   [this, &fmt=swapchainFormat.format](VkImage& swapChainImg)
-                   {
-                       return SwapchainImageSupport(
-                               &(this->logicalDev), this->renderPass, this->swapchainExtent,
-                               swapChainImg, fmt);
-                   });
-
+    createSwapchainSupport();
     CHECK_VK_SUCCESS(createCommandPool(), "Cannot create command pool!");
-    CHECK_VK_SUCCESS(createCmdBuffers(), "Cannot create command buffers!")
+    CHECK_VK_SUCCESS(createCmdBuffers(), "Cannot create command buffers!");
 
     frameSemaphores.clear();
-    for (size_t i=0; i<MAX_FRAMES_IN_FLIGHT; ++i)
+    for (size_t i=0; i < MAX_FRAMES_IN_FLIGHT; ++i)
     {
         frameSemaphores.emplace_back(&logicalDev);
     }
@@ -697,9 +689,24 @@ void Window::drawFrame()
     VkFence& inFlightFence = frameSemaphores[currentFrame].inFlight;
 
     vkWaitForFences(logicalDev, 1, &inFlightFence, VK_TRUE, UINT64_MAX);
-    vkResetFences(logicalDev, 1, &inFlightFence);
 
-    vkAcquireNextImageKHR(logicalDev, swapChain, UINT64_MAX, imgAvailable, VK_NULL_HANDLE, &imgIndex);
+
+    vkAcquireNextImageKHR(
+            logicalDev, swapChain, UINT64_MAX,
+            imgAvailable, VK_NULL_HANDLE, &imgIndex);
+
+    // if this specific image has been rendered in the previous frame,
+    // wait for it.
+
+    // If there is multiple in-flight frames per a single image,
+    // this will also check for /that/ frame as well, and
+    // switch to the current fence.
+    VkFence& imgIdxFence = swapchainSupport[imgIndex].imagesInFlight;
+    if (imgIdxFence != VK_NULL_HANDLE)
+    {
+        vkWaitForFences(logicalDev, 1, &imgIdxFence, VK_TRUE, UINT64_MAX);
+    }
+    imgIdxFence = inFlightFence;
 
     // wait then for img to become available
     VkSubmitInfo submitInfo = {};
@@ -718,6 +725,10 @@ void Window::drawFrame()
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signals;
 
+    // reset here, as inFlightFence could be the same as imgIdxFence, in which case
+    // we would have resetted /before/ waiting for fence again, which causes
+    // an infinite wait (as there's nothing to render and /signal/ the fence).
+    vkResetFences(logicalDev, 1, &inFlightFence);
     CHECK_VK_SUCCESS(
             vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence),
             "Cannot submit draw queue!");
@@ -737,4 +748,17 @@ void Window::drawFrame()
     vkQueuePresentKHR(presentQueue, &presentInfo);
 
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
+void Window::createSwapchainSupport()
+{
+
+    std::transform(swapChainImages.begin(), swapChainImages.end(),
+                   std::back_inserter(swapchainSupport),
+                   [this, &fmt=swapchainFormat.format](VkImage& swapChainImg)
+                   {
+                       return SwapchainImageSupport(
+                               &(this->logicalDev), this->renderPass, this->swapchainExtent,
+                               swapChainImg, fmt);
+                   });
 }

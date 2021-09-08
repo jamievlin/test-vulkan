@@ -31,6 +31,7 @@ protected:
     VkResult initSwapChain();
     VkResult createRenderPasses();
     VkResult createGraphicsPipeline();
+    void createSwapchainSupport();
     VkResult createCommandPool();
     VkResult createCmdBuffers();
     void recordCommands();
@@ -102,7 +103,6 @@ private:
     std::vector<SwapchainImageSupport> swapchainSupport;
     VkPipelineLayout pipelineLayout = {};
     VkRenderPass renderPass = {};
-
     VkPipeline pipeline = {};
 
     VkCommandPool cmdPool = {};

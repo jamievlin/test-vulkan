@@ -48,10 +48,12 @@ SwapchainImageSupport& SwapchainImageSupport::operator=(SwapchainImageSupport&& 
     logicalDev = swpImgSupport.logicalDev;
     imageView = swpImgSupport.imageView;
     frameBuffer = swpImgSupport.frameBuffer;
+    imagesInFlight = swpImgSupport.imagesInFlight;
 
     swpImgSupport.logicalDev = nullptr;
     swpImgSupport.imageView = VK_NULL_HANDLE;
     swpImgSupport.frameBuffer = VK_NULL_HANDLE;
+    swpImgSupport.imagesInFlight = VK_NULL_HANDLE;
 
     return *this;
 }
@@ -62,10 +64,12 @@ SwapchainImageSupport::SwapchainImageSupport(SwapchainImageSupport&& swpImgSuppo
 
     imageView = swpImgSupport.imageView;
     frameBuffer = swpImgSupport.frameBuffer;
+    imagesInFlight = swpImgSupport.imagesInFlight;
 
     swpImgSupport.logicalDev = nullptr;
     swpImgSupport.imageView = VK_NULL_HANDLE;
     swpImgSupport.frameBuffer = VK_NULL_HANDLE;
+    swpImgSupport.imagesInFlight = VK_NULL_HANDLE;
 }
 
 SwapchainImageSupport::SwapchainImageSupport(VkDevice* logicalDev, VkRenderPass const& renderPass,

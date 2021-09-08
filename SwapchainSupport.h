@@ -8,8 +8,9 @@
 class SwapchainImageSupport
 {
 public:
-    VkImageView imageView = {};
-    VkFramebuffer frameBuffer = {};
+    VkImageView imageView = VK_NULL_HANDLE;
+    VkFramebuffer frameBuffer = VK_NULL_HANDLE;
+    VkFence imagesInFlight = VK_NULL_HANDLE;
 
     SwapchainImageSupport() = default;
     SwapchainImageSupport(
