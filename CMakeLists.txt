@@ -2,20 +2,29 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.15)
 project(vkTest)
 set(CMAKE_CXX_STANDARD 17)
 
+if (GENERATE_DEBUG_SYMBOLS)
+    if (WIN32)
+        string(APPEND CMAKE_CXX_FLAGS " /Zi")
+    else()
+        string(APPEND CMAKE_CXX_FLAGS " -Og -g")
+    endif()
+    set(COMPILE_DEFINITIONS DEBUG)
+endif(GENERATE_DEBUG_SYMBOLS)
+
+
 if (WIN32)
-    # what?
+    string(APPEND CMAKE_CXX_FLAGS " /EHsc /W3")
 else()
-    set(CMAKE_CXX_FLAGS "-Wall -Og -g")
+    string(APPEND CMAKE_CXX_FLAGS " -Wall")
 endif (WIN32)
 
 file(GLOB SOURCES "*.cc")
 file(GLOB HEADERS "*.h")
 add_executable(vkTest ${SOURCES} ${HEADERS})
 
-set(COMPILE_DEFINITIONS DEBUG)
 if (ENABLE_VALIDATION_LAYERS)
     list(APPEND COMPILE_DEFINITIONS ENABLE_VALIDATION_LAYERS)
-endif (ENABLE_VALIDATION_LAYERS)
+endif(ENABLE_VALIDATION_LAYERS)
 
 set(INCLUDE_DIRS ${GLM_PATH})
 
