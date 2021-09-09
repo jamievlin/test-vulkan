@@ -3,6 +3,7 @@
 #include "common.h"
 #include "SwapChains.h"
 #include "SwapchainComponent.h"
+#include "GraphicsPipeline.h"
 #include "FrameSemaphores.h"
 
 
@@ -29,12 +30,8 @@ protected:
 #endif
     VkResult createLogicalDevice();
     VkResult createSurface();
-    VkResult createGraphicsPipeline();
-    VkResult createCommandPool();
-    VkResult createCmdBuffers();
     void recordCommands();
     void drawFrame();
-
 
     // vk extension functions
     template<typename TPtrExt, typename ...T_args>
@@ -93,12 +90,9 @@ private:
 
     VkSurfaceKHR surface = {};
 
-    VkPipeline pipeline = VK_NULL_HANDLE;
-    VkCommandPool cmdPool = VK_NULL_HANDLE;
-    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-    std::vector<VkCommandBuffer> cmdBuffers;
-
     std::unique_ptr<SwapchainComponents> swapchainComponent;
+    std::unique_ptr<GraphicsPipeline> graphicsPipeline;
+
     std::vector<FrameSemaphores> frameSemaphores;
     size_t currentFrame = 0;
 };

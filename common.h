@@ -5,7 +5,7 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
-#define GLFW_INCLUDE_VULKAN
+#include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
 #if defined(_WIN32)

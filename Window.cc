@@ -7,9 +7,6 @@
 #include "dbgCallBacks.h"
 #endif
 
-#include "QueueFamilies.h"
-#include "Shaders.h"
-
 const std::vector<char const*> requiredDevExtension = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
@@ -100,17 +97,17 @@ Window::Window(size_t const& width, size_t const& height, std::string title) :
     dev = selectPhysicalDev();
     CHECK_VK_SUCCESS(createLogicalDevice(), "Cannot create Vulkan logical device.");
 
+    // end selection of logical device
+
     swapchainComponent = std::make_unique<SwapchainComponents>(
-            &logicalDev,
-            dev,
-            surface,
-            std::make_pair(this->width, this->height));
+            &logicalDev, dev,
+            surface, std::make_pair(this->width, this->height));
 
-    CHECK_VK_SUCCESS(createGraphicsPipeline(), "Cannot create graphics pipeline!");
-    CHECK_VK_SUCCESS(createCommandPool(), "Cannot create command pool!");
-    CHECK_VK_SUCCESS(createCmdBuffers(), "Cannot create command buffers!");
+    graphicsPipeline = std::make_unique<GraphicsPipeline>(
+            &logicalDev, dev, surface,
+            "main.vert.spv", "main.frag.spv",
+            *swapchainComponent);
 
-    frameSemaphores.clear();
     for (size_t i=0; i < MAX_FRAMES_IN_FLIGHT; ++i)
     {
         frameSemaphores.emplace_back(&logicalDev);
@@ -166,11 +163,8 @@ VkResult Window::setupDebugMessenger()
 Window::~Window()
 {
     frameSemaphores.clear();
-
-    vkDestroyCommandPool(logicalDev, cmdPool, nullptr);
-    vkDestroyPipeline(logicalDev, pipeline, nullptr);
+    graphicsPipeline.reset();
     swapchainComponent.reset();
-    vkDestroyPipelineLayout(logicalDev, pipelineLayout, nullptr);
 
 #if ENABLE_VALIDATION_LAYERS == 1
     auto destroyFn = getVkExtensionVoid<
@@ -344,187 +338,12 @@ VkResult Window::createSurface()
 #endif
 }
 
-VkResult Window::createGraphicsPipeline()
-{
-    auto [vertShader, ret] = Shaders::createShaderModule(logicalDev, "main.vert.spv");
-    auto [fragShader, ret2] = Shaders::createShaderModule(logicalDev, "main.frag.spv");
-    if (ret != VK_SUCCESS or ret2 != VK_SUCCESS)
-    {
-        throw std::runtime_error("Cannot create shader");
-    }
-
-    VkPipelineShaderStageCreateInfo vertShaderInfo = {};
-    vertShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vertShaderInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertShaderInfo.module = vertShader;
-    vertShaderInfo.pName = "main";
-
-    VkPipelineShaderStageCreateInfo fragShaderInfo = {};
-    fragShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fragShaderInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragShaderInfo.module = fragShader;
-    fragShaderInfo.pName = "main";
-
-    VkPipelineShaderStageCreateInfo stages[] = {vertShaderInfo, fragShaderInfo};
-
-    VkPipelineVertexInputStateCreateInfo vertInputInfo = {};
-    vertInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertInputInfo.vertexBindingDescriptionCount = 0;
-    vertInputInfo.pVertexBindingDescriptions = nullptr;
-    vertInputInfo.vertexAttributeDescriptionCount = 0;
-    vertInputInfo.pVertexAttributeDescriptions = nullptr;
-
-    VkPipelineInputAssemblyStateCreateInfo inputAsmStateInfo = {};
-    inputAsmStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAsmStateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    inputAsmStateInfo.primitiveRestartEnable = VK_FALSE;
-
-    VkViewport viewport = {};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = (float)swapchainComponent->swapchainExtent.width;
-    viewport.height=(float)swapchainComponent->swapchainExtent.height;
-    viewport.minDepth=0.0f;
-    viewport.maxDepth=1.0f;
-
-    VkRect2D scissor = {};
-    scissor.offset = {0,0};
-    scissor.extent = swapchainComponent->swapchainExtent;
-    VkPipelineViewportStateCreateInfo viewportState = {};
-    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewportState.viewportCount = 1;
-    viewportState.pViewports = &viewport;
-    viewportState.scissorCount = 1;
-    viewportState.pScissors = &scissor;
-
-    VkPipelineRasterizationStateCreateInfo rasterizerCreateInfo = {};
-    rasterizerCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterizerCreateInfo.depthClampEnable = VK_FALSE;
-    rasterizerCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-    rasterizerCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterizerCreateInfo.lineWidth = 1.0f;
-    rasterizerCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizerCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
-    rasterizerCreateInfo.depthBiasEnable = VK_FALSE;
-
-    rasterizerCreateInfo.depthBiasConstantFactor = 0.0f;
-    rasterizerCreateInfo.depthBiasClamp = 0.0f;
-    rasterizerCreateInfo.depthBiasSlopeFactor = 0.0f;
-
-    VkPipelineMultisampleStateCreateInfo multisampleInfo = {};
-    multisampleInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampleInfo.sampleShadingEnable = VK_FALSE;
-    multisampleInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    multisampleInfo.minSampleShading = 1.0f;
-    multisampleInfo.pSampleMask = nullptr;
-    multisampleInfo.alphaToCoverageEnable = VK_FALSE;
-    multisampleInfo.alphaToOneEnable = VK_FALSE;
-
-    VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
-    colorBlendAttachment.colorWriteMask =
-            VK_COLOR_COMPONENT_R_BIT |
-            VK_COLOR_COMPONENT_G_BIT |
-            VK_COLOR_COMPONENT_B_BIT |
-            VK_COLOR_COMPONENT_A_BIT;
-
-    colorBlendAttachment.blendEnable = VK_FALSE;
-    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-
-    VkPipelineColorBlendStateCreateInfo colorBlendCreateInfo = {};
-    colorBlendCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlendCreateInfo.logicOpEnable = VK_FALSE;
-    colorBlendCreateInfo.logicOp = VK_LOGIC_OP_COPY;
-    colorBlendCreateInfo.attachmentCount = 1;
-    colorBlendCreateInfo.pAttachments = &colorBlendAttachment;
-
-    for (float& blendConstant : colorBlendCreateInfo.blendConstants)
-    {
-        blendConstant = 0.0f;
-    }
-
-    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
-    pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.setLayoutCount = 0;
-    pipelineLayoutCreateInfo.pSetLayouts = nullptr;
-    pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-    pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
-
-    if (vkCreatePipelineLayout(
-            logicalDev, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout)
-            != VK_SUCCESS)
-    {
-        throw std::runtime_error("Cannot create pipeline layout!");
-    }
-
-    VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
-    pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineCreateInfo.stageCount = 2;
-    pipelineCreateInfo.pStages = stages;
-    pipelineCreateInfo.pVertexInputState = &vertInputInfo;
-    pipelineCreateInfo.pInputAssemblyState = &inputAsmStateInfo;
-    pipelineCreateInfo.pViewportState = &viewportState;
-    pipelineCreateInfo.pRasterizationState = &rasterizerCreateInfo;
-    pipelineCreateInfo.pMultisampleState = &multisampleInfo;
-    pipelineCreateInfo.pDepthStencilState = nullptr;
-    pipelineCreateInfo.pColorBlendState = &colorBlendCreateInfo;
-    pipelineCreateInfo.pDynamicState = nullptr;
-
-    pipelineCreateInfo.layout = pipelineLayout;
-    pipelineCreateInfo.renderPass = swapchainComponent->renderPass;
-    pipelineCreateInfo.subpass = 0;
-
-    pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
-    pipelineCreateInfo.basePipelineIndex = -1;
-
-    auto retFinal = vkCreateGraphicsPipelines(
-            logicalDev, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr,
-            &pipeline);
-    vkDestroyShaderModule(logicalDev, vertShader, nullptr);
-    vkDestroyShaderModule(logicalDev, fragShader, nullptr);
-
-    return retFinal;
-}
-
-VkResult Window::createCommandPool()
-{
-    QueueFamilies queueFam(dev, surface);
-    if (not queueFam.suitable())
-    {
-        throw std::runtime_error("Queue family failed!");
-    }
-
-    VkCommandPoolCreateInfo createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    createInfo.queueFamilyIndex = queueFam.graphicsFamily.value();
-    createInfo.flags = 0;
-
-    return vkCreateCommandPool(logicalDev, &createInfo, nullptr, &cmdPool);
-}
-
-VkResult Window::createCmdBuffers()
-{
-    cmdBuffers.resize(swapchainComponent->swapChainImages.size());
-    VkCommandBufferAllocateInfo allocateInfo = {};
-    allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocateInfo.commandPool = cmdPool;
-    allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    // 1 command buffer per frame buffer
-    allocateInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
-
-    return vkAllocateCommandBuffers(logicalDev, &allocateInfo, cmdBuffers.data());
-}
-
 void Window::recordCommands()
 {
     //begin buffer recording
-    for (size_t i=0; i < cmdBuffers.size(); ++i)
+    for (size_t i=0; i < graphicsPipeline->cmdBuffers.size(); ++i)
     {
-        auto const& cmdBuf = cmdBuffers[i];
+        auto const& cmdBuf = graphicsPipeline->cmdBuffers[i];
 
         VkCommandBufferBeginInfo beginInfo = {};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -548,7 +367,7 @@ void Window::recordCommands()
         renderPassBeginInfo.pClearValues = &clearColor;
 
         vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipeline);
 
         // actual drawing command :)
         vkCmdDraw(cmdBuf, 3, 1, 0, 0);
@@ -601,7 +420,7 @@ void Window::drawFrame()
     submitInfo.pWaitDstStageMask = waitStages;
 
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = cmdBuffers.data() + imgIndex;
+    submitInfo.pCommandBuffers = graphicsPipeline->cmdBuffers.data() + imgIndex;
 
     VkSemaphore signals[] = { renderFinished };
     submitInfo.signalSemaphoreCount = 1;
