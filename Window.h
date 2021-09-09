@@ -2,8 +2,9 @@
 
 #include "common.h"
 #include "SwapChains.h"
+#include "SwapchainComponent.h"
 #include "FrameSemaphores.h"
-#include "SwapchainSupport.h"
+
 
 std::vector<char const*> getRequiredExts();
 bool deviceSuitable(VkPhysicalDevice const& dev);
@@ -28,14 +29,12 @@ protected:
 #endif
     VkResult createLogicalDevice();
     VkResult createSurface();
-    VkResult initSwapChain();
-    VkResult createRenderPasses();
     VkResult createGraphicsPipeline();
-    void createSwapchainSupport();
     VkResult createCommandPool();
     VkResult createCmdBuffers();
     void recordCommands();
     void drawFrame();
+
 
     // vk extension functions
     template<typename TPtrExt, typename ...T_args>
@@ -79,7 +78,6 @@ protected:
 #endif
     VkPhysicalDevice selectPhysicalDev();
 
-    void getSwapChainImage();
 
 private:
     size_t width, height;
@@ -94,20 +92,13 @@ private:
     VkQueue presentQueue = {};
 
     VkSurfaceKHR surface = {};
-    VkSwapchainKHR swapChain = {};
 
-    std::vector<VkImage> swapChainImages;
-    VkSurfaceFormatKHR swapchainFormat = {};
-    VkExtent2D swapchainExtent = {};
-
-    std::vector<SwapchainImageSupport> swapchainSupport;
-    VkPipelineLayout pipelineLayout = {};
-    VkRenderPass renderPass = {};
-    VkPipeline pipeline = {};
-
-    VkCommandPool cmdPool = {};
+    VkPipeline pipeline = VK_NULL_HANDLE;
+    VkCommandPool cmdPool = VK_NULL_HANDLE;
+    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> cmdBuffers;
 
+    std::unique_ptr<SwapchainComponents> swapchainComponent;
     std::vector<FrameSemaphores> frameSemaphores;
     size_t currentFrame = 0;
 };

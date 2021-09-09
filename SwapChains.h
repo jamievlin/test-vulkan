@@ -9,12 +9,13 @@
 struct SwapChainsDetail
 {
 public:
+    SwapChainsDetail() = default;
     explicit SwapChainsDetail(VkPhysicalDevice const& dev, VkSurfaceKHR const& surface);
 
     [[nodiscard]]
     bool adequate();
 
-    VkSurfaceCapabilitiesKHR capabilities;
+    VkSurfaceCapabilitiesKHR capabilities = {};
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
 

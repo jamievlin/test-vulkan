@@ -99,12 +99,14 @@ Window::Window(size_t const& width, size_t const& height, std::string title) :
     CHECK_VK_SUCCESS(createSurface(), "Cannot create surface!");
     dev = selectPhysicalDev();
     CHECK_VK_SUCCESS(createLogicalDevice(), "Cannot create Vulkan logical device.");
-    CHECK_VK_SUCCESS(initSwapChain(), "Cannot create Vulkan Swap chain!");
-    getSwapChainImage();
-    CHECK_VK_SUCCESS(createRenderPasses(), "Cannot create render passes!");
-    CHECK_VK_SUCCESS(createGraphicsPipeline(), "Cannot create graphics pipeline!");
 
-    createSwapchainSupport();
+    swapchainComponent = std::make_unique<SwapchainComponents>(
+            &logicalDev,
+            dev,
+            surface,
+            std::make_pair(this->width, this->height));
+
+    CHECK_VK_SUCCESS(createGraphicsPipeline(), "Cannot create graphics pipeline!");
     CHECK_VK_SUCCESS(createCommandPool(), "Cannot create command pool!");
     CHECK_VK_SUCCESS(createCmdBuffers(), "Cannot create command buffers!");
 
@@ -167,11 +169,8 @@ Window::~Window()
 
     vkDestroyCommandPool(logicalDev, cmdPool, nullptr);
     vkDestroyPipeline(logicalDev, pipeline, nullptr);
-    vkDestroyRenderPass(logicalDev, renderPass, nullptr);
+    swapchainComponent.reset();
     vkDestroyPipelineLayout(logicalDev, pipelineLayout, nullptr);
-
-    swapchainSupport.clear();
-    vkDestroySwapchainKHR(logicalDev, swapChain, nullptr);
 
 #if ENABLE_VALIDATION_LAYERS == 1
     auto destroyFn = getVkExtensionVoid<
@@ -345,77 +344,6 @@ VkResult Window::createSurface()
 #endif
 }
 
-VkResult Window::initSwapChain()
-{
-    SwapChainsDetail detail(dev, surface);
-    if (!detail.adequate())
-    {
-        throw std::runtime_error("Cannot create Swap Chain!");
-    }
-
-    swapchainFormat=detail.selectFmt();
-    swapchainExtent=detail.chooseSwapExtent(width, height);
-
-    uint32_t imgCount=std::min(
-            detail.capabilities.minImageCount + 1,
-            detail.capabilities.maxImageCount);
-    if (imgCount == 0)
-    {
-        throw std::runtime_error("Driver does not support Image buffer!");
-    }
-
-    VkSwapchainCreateInfoKHR createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    createInfo.surface = surface;
-    createInfo.minImageCount = imgCount;
-    createInfo.imageFormat = swapchainFormat.format;
-    createInfo.imageColorSpace = swapchainFormat.colorSpace;
-
-    createInfo.imageExtent = swapchainExtent;
-    createInfo.imageArrayLayers = 1;
-    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-    QueueFamilies fam(dev, surface);
-    if (not fam.suitable())
-    {
-        throw std::runtime_error("Cannot create queue family!");
-    }
-    uint32_t idx[] = {
-            fam.graphicsFamily.value(),
-            fam.presentationFamily.value()
-    };
-
-    if (fam.graphicsFamily != fam.presentationFamily)
-    {
-        createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-        createInfo.queueFamilyIndexCount = 2;
-        createInfo.pQueueFamilyIndices = idx;
-    }
-    else
-    {
-        createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        createInfo.queueFamilyIndexCount = 0;
-        createInfo.pQueueFamilyIndices = nullptr;
-    }
-
-    createInfo.preTransform = detail.capabilities.currentTransform;
-
-    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    createInfo.presentMode = detail.chooseSwapPresentMode();
-    createInfo.clipped = VK_TRUE;
-    createInfo.oldSwapchain = VK_NULL_HANDLE;
-
-    return vkCreateSwapchainKHR(logicalDev, &createInfo, nullptr, &swapChain);
-}
-
-void Window::getSwapChainImage()
-{
-    uint32_t imageCount;
-    vkGetSwapchainImagesKHR(logicalDev, swapChain, &imageCount, nullptr);
-    swapChainImages.resize(imageCount);
-    vkGetSwapchainImagesKHR(logicalDev, swapChain, &imageCount, swapChainImages.data());
-}
-
 VkResult Window::createGraphicsPipeline()
 {
     auto [vertShader, ret] = Shaders::createShaderModule(logicalDev, "main.vert.spv");
@@ -454,14 +382,14 @@ VkResult Window::createGraphicsPipeline()
     VkViewport viewport = {};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = (float)swapchainExtent.width;
-    viewport.height=(float)swapchainExtent.height;
+    viewport.width = (float)swapchainComponent->swapchainExtent.width;
+    viewport.height=(float)swapchainComponent->swapchainExtent.height;
     viewport.minDepth=0.0f;
     viewport.maxDepth=1.0f;
 
     VkRect2D scissor = {};
     scissor.offset = {0,0};
-    scissor.extent = swapchainExtent;
+    scissor.extent = swapchainComponent->swapchainExtent;
     VkPipelineViewportStateCreateInfo viewportState = {};
     viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     viewportState.viewportCount = 1;
@@ -547,7 +475,7 @@ VkResult Window::createGraphicsPipeline()
     pipelineCreateInfo.pDynamicState = nullptr;
 
     pipelineCreateInfo.layout = pipelineLayout;
-    pipelineCreateInfo.renderPass = renderPass;
+    pipelineCreateInfo.renderPass = swapchainComponent->renderPass;
     pipelineCreateInfo.subpass = 0;
 
     pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -560,52 +488,6 @@ VkResult Window::createGraphicsPipeline()
     vkDestroyShaderModule(logicalDev, fragShader, nullptr);
 
     return retFinal;
-}
-
-VkResult Window::createRenderPasses()
-{
-    VkAttachmentDescription colorAttachment = {};
-    colorAttachment.format = swapchainFormat.format;
-    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-
-    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-    VkAttachmentReference colorAttachmentRef = {};
-    colorAttachmentRef.attachment = 0;
-    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    VkSubpassDescription subpass = {};
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = 1;
-    subpass.pColorAttachments = &colorAttachmentRef;
-
-    VkSubpassDependency dep = {};
-    dep.srcSubpass = VK_SUBPASS_EXTERNAL;
-    dep.dstSubpass = 0;
-    dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dep.srcAccessMask = 0;
-
-    dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-
-    VkRenderPassCreateInfo renderPassCreateInfo = {};
-    renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassCreateInfo.attachmentCount = 1;
-    renderPassCreateInfo.pAttachments = &colorAttachment;
-    renderPassCreateInfo.subpassCount = 1;
-    renderPassCreateInfo.pSubpasses = &subpass;
-    renderPassCreateInfo.dependencyCount = 1;
-    renderPassCreateInfo.pDependencies = &dep;
-
-    return vkCreateRenderPass(logicalDev, &renderPassCreateInfo, nullptr, &renderPass);
 }
 
 VkResult Window::createCommandPool()
@@ -626,7 +508,7 @@ VkResult Window::createCommandPool()
 
 VkResult Window::createCmdBuffers()
 {
-    cmdBuffers.resize(swapChainImages.size());
+    cmdBuffers.resize(swapchainComponent->swapChainImages.size());
     VkCommandBufferAllocateInfo allocateInfo = {};
     allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocateInfo.commandPool = cmdPool;
@@ -655,11 +537,11 @@ void Window::recordCommands()
 
         VkRenderPassBeginInfo renderPassBeginInfo = {};
         renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassBeginInfo.renderPass = renderPass;
-        renderPassBeginInfo.framebuffer = swapchainSupport[i].frameBuffer;
+        renderPassBeginInfo.renderPass = swapchainComponent->renderPass;
+        renderPassBeginInfo.framebuffer = swapchainComponent->swapchainSupport[i].frameBuffer;
 
         renderPassBeginInfo.renderArea.offset = {0,0};
-        renderPassBeginInfo.renderArea.extent = swapchainExtent;
+        renderPassBeginInfo.renderArea.extent = swapchainComponent->swapchainExtent;
 
         VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
         renderPassBeginInfo.clearValueCount = 1;
@@ -692,7 +574,7 @@ void Window::drawFrame()
 
 
     vkAcquireNextImageKHR(
-            logicalDev, swapChain, UINT64_MAX,
+            logicalDev, swapchainComponent->swapChain, UINT64_MAX,
             imgAvailable, VK_NULL_HANDLE, &imgIndex);
 
     // if this specific image has been rendered in the previous frame,
@@ -701,7 +583,7 @@ void Window::drawFrame()
     // If there is multiple in-flight frames per a single image,
     // this will also check for /that/ frame as well, and
     // switch to the current fence.
-    VkFence& imgIdxFence = swapchainSupport[imgIndex].imagesInFlight;
+    VkFence& imgIdxFence = swapchainComponent->swapchainSupport[imgIndex].imagesInFlight;
     if (imgIdxFence != VK_NULL_HANDLE)
     {
         vkWaitForFences(logicalDev, 1, &imgIdxFence, VK_TRUE, UINT64_MAX);
@@ -739,7 +621,7 @@ void Window::drawFrame()
     presentInfo.waitSemaphoreCount = 1;
     presentInfo.pWaitSemaphores = signals;
 
-    VkSwapchainKHR chains[] = {swapChain};
+    VkSwapchainKHR chains[] = {swapchainComponent->swapChain};
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = chains;
     presentInfo.pImageIndices = &imgIndex;
@@ -748,17 +630,4 @@ void Window::drawFrame()
     vkQueuePresentKHR(presentQueue, &presentInfo);
 
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-}
-
-void Window::createSwapchainSupport()
-{
-
-    std::transform(swapChainImages.begin(), swapChainImages.end(),
-                   std::back_inserter(swapchainSupport),
-                   [this, &fmt=swapchainFormat.format](VkImage& swapChainImg)
-                   {
-                       return SwapchainImageSupport(
-                               &(this->logicalDev), this->renderPass, this->swapchainExtent,
-                               swapChainImg, fmt);
-                   });
 }
