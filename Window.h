@@ -16,8 +16,8 @@ constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
 class Window
 {
 public:
-    Window(size_t const& width, size_t const& height, std::string title);
-    ~Window();
+    Window(size_t const& width, size_t const& height, std::string windowTitle);
+    virtual ~Window();
 
     Window(Window const& win) = delete;
     Window& operator=(Window const& win) = delete;

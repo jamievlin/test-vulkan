@@ -82,8 +82,8 @@ bool deviceSuitable(VkPhysicalDevice const& dev)
     return checkDeviceExtensionSupport(dev) && features.tessellationShader && features.geometryShader;
 }
 
-Window::Window(size_t const& width, size_t const& height, std::string title) :
-    instance(), width(width), height(height), title(std::move(title))
+Window::Window(size_t const& width, size_t const& height, std::string windowTitle) :
+    instance(), width(width), height(height), title(std::move(windowTitle))
 {
     glfwInit();
 
