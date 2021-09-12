@@ -474,6 +474,11 @@ void Window::drawFrame()
 
 void Window::resetSwapChain()
 {
+    while (this->width == 0 && this->height == 0)
+    {
+        glfwWaitEvents();
+    }
+
     vkDeviceWaitIdle(logicalDev);
 
     swapchainComponent.reset();
