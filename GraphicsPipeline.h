@@ -12,7 +12,6 @@ class GraphicsPipeline
 {
 public:
     VkPipeline pipeline = VK_NULL_HANDLE;
-    VkCommandPool cmdPool = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> cmdBuffers;
 
@@ -20,6 +19,7 @@ public:
     GraphicsPipeline(
             VkDevice* device,
             VkPhysicalDevice const& physDev,
+            VkCommandPool* cmdPool,
             VkSurfaceKHR const& surface,
             std::string const& vertShader,
             std::string const& fragShader,
@@ -39,9 +39,9 @@ protected:
             std::string const& fragShaderName,
             SwapchainComponents const& swapChain);
 
-    VkResult createCommandPool(VkPhysicalDevice const& physDev, VkSurfaceKHR const& surface);
     VkResult createCmdBuffers(SwapchainComponents const& swapChain);
 
 private:
     VkDevice* logicalDev=nullptr;
+    VkCommandPool* cmdPool;
 };

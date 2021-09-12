@@ -82,10 +82,11 @@ Window::Window(size_t const& width, size_t const& height, std::string title) :
 
     // window creation
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     window = glfwCreateWindow(
             static_cast<int>(width), static_cast<int>(height),
             title.c_str(), nullptr, nullptr);
+    initCallbacks();
 
     // instance creation
     CHECK_VK_SUCCESS(initInstance(), "Cannot create Vulkan instance.");
@@ -103,8 +104,10 @@ Window::Window(size_t const& width, size_t const& height, std::string title) :
             &logicalDev, dev,
             surface, std::make_pair(this->width, this->height));
 
+    CHECK_VK_SUCCESS(createCommandPool(), "Cannot create command Pool!");
+
     graphicsPipeline = std::make_unique<GraphicsPipeline>(
-            &logicalDev, dev, surface,
+            &logicalDev, dev, &cmdPool, surface,
             "main.vert.spv", "main.frag.spv",
             *swapchainComponent);
 
@@ -165,6 +168,7 @@ Window::~Window()
     frameSemaphores.clear();
     graphicsPipeline.reset();
     swapchainComponent.reset();
+    vkDestroyCommandPool(logicalDev, cmdPool, nullptr);
 
 #if ENABLE_VALIDATION_LAYERS == 1
     auto destroyFn = getVkExtensionVoid<
@@ -391,10 +395,19 @@ void Window::drawFrame()
 
     vkWaitForFences(logicalDev, 1, &inFlightFence, VK_TRUE, UINT64_MAX);
 
-
-    vkAcquireNextImageKHR(
+    VkResult nextImgResult = vkAcquireNextImageKHR(
             logicalDev, swapchainComponent->swapChain, UINT64_MAX,
             imgAvailable, VK_NULL_HANDLE, &imgIndex);
+
+    if (nextImgResult == VK_ERROR_OUT_OF_DATE_KHR)
+    {
+        resetSwapChain();
+        return;
+    }
+    else if (nextImgResult != VK_SUCCESS && nextImgResult != VK_SUBOPTIMAL_KHR)
+    {
+        throw std::runtime_error("Cannot acquire swap chain image!");
+    }
 
     // if this specific image has been rendered in the previous frame,
     // wait for it.
@@ -440,13 +453,67 @@ void Window::drawFrame()
     presentInfo.waitSemaphoreCount = 1;
     presentInfo.pWaitSemaphores = signals;
 
-    VkSwapchainKHR chains[] = {swapchainComponent->swapChain};
+    VkSwapchainKHR chains[] = { swapchainComponent->swapChain };
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = chains;
     presentInfo.pImageIndices = &imgIndex;
     presentInfo.pResults = nullptr;
 
-    vkQueuePresentKHR(presentQueue, &presentInfo);
+    auto presentResult = vkQueuePresentKHR(presentQueue, &presentInfo);
+    if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR)
+    {
+        resetSwapChain();
+    }
+    else if (presentResult != VK_SUCCESS)
+    {
+        throw std::runtime_error("Cannot present image!");
+    }
 
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
+void Window::resetSwapChain()
+{
+    vkDeviceWaitIdle(logicalDev);
+
+    swapchainComponent.reset();
+    swapchainComponent = std::make_unique<SwapchainComponents>(
+            &logicalDev, dev,
+            surface, std::make_pair(this->width, this->height));
+    graphicsPipeline = std::make_unique<GraphicsPipeline>(
+            &logicalDev, dev, &cmdPool, surface,
+            "main.vert.spv", "main.frag.spv",
+            *swapchainComponent);
+
+    recordCommands();
+}
+
+// static
+void Window::onWindowSizeChange(GLFWwindow* ptr, int width, int height)
+{
+    auto* self = reinterpret_cast<Window*>(glfwGetWindowUserPointer(ptr));
+    self->width = width;
+    self->height = height;
+}
+
+void Window::initCallbacks()
+{
+    glfwSetWindowUserPointer(window, this);
+    glfwSetWindowSizeCallback(window, Window::onWindowSizeChange);
+}
+
+VkResult Window::createCommandPool()
+{
+    QueueFamilies queueFam(dev, surface);
+    if (not queueFam.suitable())
+    {
+        throw std::runtime_error("Queue family failed!");
+    }
+
+    VkCommandPoolCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    createInfo.queueFamilyIndex = queueFam.graphicsFamily.value();
+    createInfo.flags = 0;
+
+    return vkCreateCommandPool(logicalDev, &createInfo, nullptr, &cmdPool);
 }

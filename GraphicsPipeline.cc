@@ -157,39 +157,20 @@ VkResult GraphicsPipeline::createGraphicsPipeline(std::string const& vertShaderN
 GraphicsPipeline::GraphicsPipeline(
         VkDevice* device,
         VkPhysicalDevice const& physDev,
+        VkCommandPool* cmdPool,
         VkSurfaceKHR const& surface,
         std::string const& vertShader,
         std::string const& fragShader,
         SwapchainComponents const& swapChain) :
-        logicalDev(device)
+        logicalDev(device), cmdPool(cmdPool)
 {
     CHECK_VK_SUCCESS(
             createGraphicsPipeline(vertShader, fragShader, swapChain),
             CREATE_GRAPHICS_PIPELINE_FAILED);
 
     CHECK_VK_SUCCESS(
-            createCommandPool(physDev, surface),
-            CREATE_COMMAND_POOL_FAILED);
-
-    CHECK_VK_SUCCESS(
             createCmdBuffers(swapChain),
             CREATE_COMMAND_BUFFERS_FAILED);
-}
-
-VkResult GraphicsPipeline::createCommandPool(VkPhysicalDevice const& physDev, VkSurfaceKHR const& surface)
-{
-    QueueFamilies queueFam(physDev, surface);
-    if (not queueFam.suitable())
-    {
-        throw std::runtime_error("Queue family failed!");
-    }
-
-    VkCommandPoolCreateInfo createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    createInfo.queueFamilyIndex = queueFam.graphicsFamily.value();
-    createInfo.flags = 0;
-
-    return vkCreateCommandPool(*logicalDev, &createInfo, nullptr, &cmdPool);
 }
 
 VkResult GraphicsPipeline::createCmdBuffers(SwapchainComponents const& swapChain)
@@ -197,7 +178,7 @@ VkResult GraphicsPipeline::createCmdBuffers(SwapchainComponents const& swapChain
     cmdBuffers.resize(swapChain.swapChainImages.size());
     VkCommandBufferAllocateInfo allocateInfo = {};
     allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocateInfo.commandPool = cmdPool;
+    allocateInfo.commandPool = *cmdPool;
     allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     // 1 command buffer per frame buffer
     allocateInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
@@ -209,7 +190,6 @@ GraphicsPipeline::GraphicsPipeline(GraphicsPipeline&& graphicspipeline) noexcept
         logicalDev(std::move(graphicspipeline.logicalDev))
 {
     pipeline = std::move(graphicspipeline.pipeline);
-    cmdPool = std::move(graphicspipeline.cmdPool);
     pipelineLayout = std::move(graphicspipeline.pipelineLayout);
     cmdBuffers = std::move(graphicspipeline.cmdBuffers);
 
@@ -220,7 +200,6 @@ GraphicsPipeline& GraphicsPipeline::operator=(GraphicsPipeline&& graphicspipelin
 {
     logicalDev = std::move(graphicspipeline.logicalDev);
     pipeline = std::move(graphicspipeline.pipeline);
-    cmdPool = std::move(graphicspipeline.cmdPool);
     pipelineLayout = std::move(graphicspipeline.pipelineLayout);
     cmdBuffers = std::move(graphicspipeline.cmdBuffers);
 
@@ -229,12 +208,21 @@ GraphicsPipeline& GraphicsPipeline::operator=(GraphicsPipeline&& graphicspipelin
     return *this;
 }
 
+
+
 GraphicsPipeline::~GraphicsPipeline()
 {
     if (logicalDev)
     {
-        vkDestroyCommandPool(*logicalDev, cmdPool, nullptr);
+        vkFreeCommandBuffers(*logicalDev, *cmdPool,
+                             static_cast<uint32_t>(cmdBuffers.size()),
+                             cmdBuffers.data());
         vkDestroyPipeline(*logicalDev, pipeline, nullptr);
         vkDestroyPipelineLayout(*logicalDev, pipelineLayout, nullptr);
+
+        cmdBuffers.clear();
+        pipeline = VK_NULL_HANDLE;
+        pipelineLayout = VK_NULL_HANDLE;
     }
 }
+

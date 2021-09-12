@@ -23,6 +23,10 @@ public:
     int mainLoop();
 
 protected:
+    // Callback functions
+    static void onWindowSizeChange(GLFWwindow* ptr, int width, int height);
+
+    void initCallbacks();
     VkResult initInstance();
 #if defined(ENABLE_VALIDATION_LAYERS)
     VkDebugUtilsMessengerEXT dbgMessenger;
@@ -30,8 +34,10 @@ protected:
 #endif
     VkResult createLogicalDevice();
     VkResult createSurface();
+    VkResult createCommandPool();
     void recordCommands();
     void drawFrame();
+    void resetSwapChain();
 
     // vk extension functions
     template<typename TPtrExt, typename ...T_args>
@@ -91,6 +97,7 @@ private:
     VkSurfaceKHR surface = {};
 
     std::unique_ptr<SwapchainComponents> swapchainComponent;
+    VkCommandPool cmdPool;
     std::unique_ptr<GraphicsPipeline> graphicsPipeline;
 
     std::vector<FrameSemaphores> frameSemaphores;
