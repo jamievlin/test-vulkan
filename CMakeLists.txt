@@ -2,16 +2,24 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.15)
 project(vkTest)
 set(CMAKE_CXX_STANDARD 17)
 
-if (GENERATE_DEBUG_SYMBOLS)
+# Debugging symbols. g++/clang++ for linux, MSVC for windows
+if (CMAKE_BUILD_TYPE MATCHES DEBUG)
     if (WIN32)
         string(APPEND CMAKE_CXX_FLAGS " /Zi")
     else()
         string(APPEND CMAKE_CXX_FLAGS " -Og -g")
     endif()
     set(COMPILE_DEFINITIONS DEBUG)
-endif(GENERATE_DEBUG_SYMBOLS)
+elseif (CMAKE_BUILD_TYPE MATCHES RELEASE)
+    if (WIN32)
+        string(APPEND CMAKE_CXX_FLAGS " /O2")
+    else()
+        string(APPEND CMAKE_CXX_FLAGS " -O3")
+    endif()
+    set(COMPILE_DEFINITIONS RELEASE)
+endif()
 
-
+# Other compiler defintions
 if (WIN32)
     string(APPEND CMAKE_CXX_FLAGS " /EHsc /W3")
 else()
@@ -22,12 +30,12 @@ file(GLOB SOURCES "*.cc")
 file(GLOB HEADERS "*.h")
 add_executable(vkTest ${SOURCES} ${HEADERS})
 
+# For vulkan validation layers
 if (ENABLE_VALIDATION_LAYERS)
     list(APPEND COMPILE_DEFINITIONS ENABLE_VALIDATION_LAYERS)
 endif(ENABLE_VALIDATION_LAYERS)
 
 set(INCLUDE_DIRS ${GLM_PATH})
-
 find_path(GLM_PATH glm/glm.hpp)
 
 find_package(Vulkan REQUIRED)
@@ -36,6 +44,7 @@ find_package(glfw3 REQUIRED)
 list(APPEND INCLUDE_DIRS ${Vulkan_INCLUDE_DIRS})
 set(LIBRARIES ${Vulkan_LIBRARIES} glfw)
 
+# Shader compilation
 file(GLOB SHADERS **/*.glsl)
 set(GLSLC_FLAGS -O -Werror)
 set(GLSLC_TARGETS --target-spv=spv1.5 --target-env=vulkan1.2)
@@ -48,6 +57,7 @@ foreach(shaderFile IN LISTS SHADERS)
     set(shaderOutName ${shaderNameExt}.spv)
     list(APPEND SHADER_OUTFILES ${shaderOutName})
 
+    # using glslc
     set(GLSLC_CMD glslc
             ${GLSLC_FLAGS} ${GLSLC_TARGETS}
             -fshader-stage=${shaderStage}
