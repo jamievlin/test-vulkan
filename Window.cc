@@ -1,4 +1,5 @@
 #include "Window.h"
+#include "Vertex.h"
 
 #include <utility>
 
@@ -9,6 +10,12 @@
 
 const std::vector<char const*> requiredDevExtension = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
+
+const std::vector<Vertex> verts = {
+        {{0.f, 0.f}, {1.f, 0.f, 0.f}},
+        {{0.5f, 0.f}, {0.f, 1.f, 0.f}},
+        {{0.f, 0.5f}, {0.f, 0.f, 1.f}},
 };
 
 std::vector<char const*> getRequiredExts()
@@ -115,6 +122,9 @@ Window::Window(size_t const& width, size_t const& height, std::string title) :
     {
         frameSemaphores.emplace_back(&logicalDev);
     }
+
+    vertexBuffer = std::make_unique<VertexBuffer<Vertex>>(
+            &logicalDev, dev, verts);
 }
 
 int Window::mainLoop()
@@ -131,7 +141,6 @@ int Window::mainLoop()
 }
 
 #if defined(ENABLE_VALIDATION_LAYERS)
-
 VkDebugUtilsMessengerCreateInfoEXT Window::createDebugInfo()
 {
     VkDebugUtilsMessengerCreateInfoEXT dbgInfo = {};
@@ -160,11 +169,11 @@ VkResult Window::setupDebugMessenger()
             >("vkCreateDebugUtilsMessengerEXT");
     return createDbgFn(instance, &createInfo, nullptr, &this->dbgMessenger);
 }
-
 #endif
 
 Window::~Window()
 {
+    vertexBuffer.reset();
     frameSemaphores.clear();
     graphicsPipeline.reset();
     swapchainComponent.reset();
@@ -373,8 +382,12 @@ void Window::recordCommands()
         vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipeline);
 
+        VkBuffer vertBuffers[] = { vertexBuffer->vertexBuffer };
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(cmdBuf, 0, 1, vertBuffers, offsets);
+
         // actual drawing command :)
-        vkCmdDraw(cmdBuf, 3, 1, 0, 0);
+        vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
 
         vkCmdEndRenderPass(cmdBuf);
 
@@ -522,3 +535,4 @@ VkResult Window::createCommandPool()
 
     return vkCreateCommandPool(logicalDev, &createInfo, nullptr, &cmdPool);
 }
+

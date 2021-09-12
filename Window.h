@@ -5,6 +5,8 @@
 #include "SwapchainComponent.h"
 #include "GraphicsPipeline.h"
 #include "FrameSemaphores.h"
+#include "Vertex.h"
+#include "VertexBuffer.h"
 
 
 std::vector<char const*> getRequiredExts();
@@ -99,6 +101,8 @@ private:
     std::unique_ptr<SwapchainComponents> swapchainComponent;
     VkCommandPool cmdPool;
     std::unique_ptr<GraphicsPipeline> graphicsPipeline;
+
+    std::unique_ptr<VertexBuffer<Vertex>> vertexBuffer;
 
     std::vector<FrameSemaphores> frameSemaphores;
     size_t currentFrame = 0;

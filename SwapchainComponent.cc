@@ -120,8 +120,9 @@ VkResult SwapchainComponents::createRenderPasses()
     return vkCreateRenderPass(*logicalDev, &renderPassCreateInfo, nullptr, &renderPass);
 }
 
-SwapchainComponents::SwapchainComponents(VkDevice* logicalDev, VkPhysicalDevice const& physDevice,
-                                         VkSurfaceKHR const& surface, std::pair<size_t, size_t> const& windowHeight) : detail(physDevice, surface), logicalDev(logicalDev)
+SwapchainComponents::SwapchainComponents(
+        VkDevice* logicalDev, VkPhysicalDevice const& physDevice,
+        VkSurfaceKHR const& surface, std::pair<size_t, size_t> const& windowHeight) : detail(physDevice, surface), logicalDev(logicalDev)
 {
     CHECK_VK_SUCCESS(
             initSwapChain(physDevice, windowHeight, surface),

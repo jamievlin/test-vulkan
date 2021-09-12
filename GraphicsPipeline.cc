@@ -3,6 +3,8 @@
 //
 
 #include "GraphicsPipeline.h"
+#include "Vertex.h"
+
 constexpr char const* CREATE_GRAPHICS_PIPELINE_FAILED = "Cannot create graphics pipeline!";
 constexpr char const* CREATE_COMMAND_POOL_FAILED = "Cannot create command pool!";
 constexpr char const* CREATE_COMMAND_BUFFERS_FAILED = "Cannot create command buffers!";
@@ -31,12 +33,15 @@ VkResult GraphicsPipeline::createGraphicsPipeline(std::string const& vertShaderN
 
     VkPipelineShaderStageCreateInfo stages[] = {vertShaderInfo, fragShaderInfo};
 
+    auto bindingDesc = Vertex::bindingDescription();
+    auto attribDesc = Vertex::attributeDescription();
+
     VkPipelineVertexInputStateCreateInfo vertInputInfo = {};
     vertInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertInputInfo.vertexBindingDescriptionCount = 0;
-    vertInputInfo.pVertexBindingDescriptions = nullptr;
-    vertInputInfo.vertexAttributeDescriptionCount = 0;
-    vertInputInfo.pVertexAttributeDescriptions = nullptr;
+    vertInputInfo.vertexBindingDescriptionCount = 1;
+    vertInputInfo.pVertexBindingDescriptions = &bindingDesc;
+    vertInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribDesc.size());
+    vertInputInfo.pVertexAttributeDescriptions = attribDesc.data();
 
     VkPipelineInputAssemblyStateCreateInfo inputAsmStateInfo = {};
     inputAsmStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -187,12 +192,11 @@ VkResult GraphicsPipeline::createCmdBuffers(SwapchainComponents const& swapChain
 }
 
 GraphicsPipeline::GraphicsPipeline(GraphicsPipeline&& graphicspipeline) noexcept:
-        logicalDev(std::move(graphicspipeline.logicalDev))
+        logicalDev(std::move(graphicspipeline.logicalDev)),
+        pipeline(std::move(graphicspipeline.pipeline)),
+        pipelineLayout(std::move(graphicspipeline.pipelineLayout)),
+        cmdBuffers(std::move(graphicspipeline.cmdBuffers))
 {
-    pipeline = std::move(graphicspipeline.pipeline);
-    pipelineLayout = std::move(graphicspipeline.pipelineLayout);
-    cmdBuffers = std::move(graphicspipeline.cmdBuffers);
-
     graphicspipeline.logicalDev = nullptr;
 }
 
