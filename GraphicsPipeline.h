@@ -43,5 +43,5 @@ protected:
 
 private:
     VkDevice* logicalDev=nullptr;
-    VkCommandPool* cmdPool;
+    VkCommandPool* cmdPool=nullptr;
 };
