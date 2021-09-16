@@ -10,7 +10,7 @@
 namespace Buffers
 {
     template<typename TVertex=Vertex>
-    class VertexBuffer : public Buffers::Buffer
+    class VertexBuffer : public Buffer
     {
     public:
         VertexBuffer() = default;
@@ -22,7 +22,11 @@ namespace Buffers
                 std::vector<TVertex> const& vertices,
                 optUint32Set const& usedQueues = nullopt
 
-        ) : Buffer(dev, vertices.size() * sizeof(TVertex), physicalDev, usedQueues)
+        ) : Buffer(dev,
+                   vertices.size() * sizeof(TVertex),
+                   physicalDev,
+                   VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                   usedQueues)
         {
             CHECK_VK_SUCCESS(vkBindBufferMemory(*getLogicalDev(), vertexBuffer, deviceMemory, 0),
                              "Cannot bind buffer!");

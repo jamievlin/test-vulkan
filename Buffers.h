@@ -21,11 +21,8 @@ namespace Buffers
 
         Buffer() = default;
         Buffer(
-                VkDevice* dev,
-                size_t const& bufferSize,
-                VkPhysicalDevice const& physicalDev,
-                optUint32Set const& usedQueues = nullopt
-        );
+                VkDevice* dev, size_t const& bufferSize, VkPhysicalDevice const& physicalDev,
+                VkBufferUsageFlags const& bufferUsageFlags, optUint32Set const& usedQueues = nullopt);
 
         Buffer(Buffer const&) = delete;
         Buffer& operator= (Buffer const&) = delete;
@@ -43,8 +40,10 @@ namespace Buffers
         uint32_t getSize() const;
 
     protected:
-        VkResult createVertexBuffer();
-        VkResult createVertexBufferConcurrent(std::set<uint32_t> const& queues);
+        VkResult createVertexBuffer(VkBufferUsageFlags const& bufferUsageFlags);
+        VkResult createVertexBufferConcurrent(
+                VkBufferUsageFlags const& bufferUsageFlags,
+                std::set<uint32_t> const& queues);
         VkResult allocateMemory(VkPhysicalDevice const& physicalDev);
 
         [[nodiscard]]

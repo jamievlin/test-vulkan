@@ -27,15 +27,18 @@ namespace Buffers
     }
 
     Buffer::Buffer(VkDevice* dev, size_t const& bufferSize, VkPhysicalDevice const& physicalDev,
-                   optUint32Set const& usedQueues) : logicalDev(dev), size(bufferSize)
+                   VkBufferUsageFlags const& bufferUsageFlags, optUint32Set const& usedQueues
+                   ) : logicalDev(dev), size(bufferSize)
     {
         if (usedQueues.has_value() and usedQueues.value().size() > 1)
         {
-            CHECK_VK_SUCCESS(createVertexBufferConcurrent(usedQueues.value()), "Cannot create buffer!");
+            CHECK_VK_SUCCESS(createVertexBufferConcurrent(
+                    bufferUsageFlags,
+                    usedQueues.value()), "Cannot create buffer!");
         }
         else
         {
-            CHECK_VK_SUCCESS(createVertexBuffer(), "Cannot create buffer!");
+            CHECK_VK_SUCCESS(createVertexBuffer(bufferUsageFlags), "Cannot create buffer!");
         }
         CHECK_VK_SUCCESS(allocateMemory(physicalDev), "Cannot allocate device memory!");
     }
@@ -85,12 +88,12 @@ namespace Buffers
         return static_cast<uint32_t>(size);
     }
 
-    VkResult Buffer::createVertexBuffer()
+    VkResult Buffer::createVertexBuffer(VkBufferUsageFlags const& bufferUsageFlags)
     {
         VkBufferCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         createInfo.size = size;
-        createInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        createInfo.usage = bufferUsageFlags;
         createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         createInfo.queueFamilyIndexCount = 0;
         createInfo.pQueueFamilyIndices = nullptr;
@@ -98,12 +101,14 @@ namespace Buffers
         return vkCreateBuffer(*logicalDev, &createInfo, nullptr, &vertexBuffer);
     }
 
-    VkResult Buffer::createVertexBufferConcurrent(std::set<uint32_t> const& queues)
+    VkResult Buffer::createVertexBufferConcurrent(
+            VkBufferUsageFlags const& bufferUsageFlags,
+            std::set<uint32_t> const& queues)
     {
         VkBufferCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         createInfo.size = size;
-        createInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        createInfo.usage = bufferUsageFlags;
         createInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
 
         createInfo.queueFamilyIndexCount = static_cast<uint32_t>(queues.size());
