@@ -15,10 +15,17 @@ QueueFamilies::QueueFamilies(VkPhysicalDevice const& dev, VkSurfaceKHR const& su
     for (int i = 0; i < queueFamilyVec.size(); ++i)
     {
         auto const& queueFamilyProperty = queueFamilyVec[i];
+        auto const& queueFlags = queueFamilyProperty.queueFlags;
 
-        if (queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        if (queueFlags & VK_QUEUE_GRAPHICS_BIT)
         {
             graphicsFamily = i;
+        }
+
+        if (queueFlags & VK_QUEUE_TRANSFER_BIT
+            && (queueFlags & ~VK_QUEUE_GRAPHICS_BIT))
+        {
+            transferFamily = i;
         }
 
         VkBool32 presentSupport = false;
@@ -34,4 +41,14 @@ bool QueueFamilies::suitable() const
 {
     return graphicsFamily.has_value() and
         presentationFamily.has_value();
+}
+
+uint32_t QueueFamilies::transferQueueFamily()
+{
+    return transferFamily.value_or(graphicsFamily.value());
+}
+
+std::set<uint32_t> QueueFamilies::queuesForTransfer()
+{
+    return std::set<uint32_t> { graphicsFamily.value(), transferQueueFamily() };
 }

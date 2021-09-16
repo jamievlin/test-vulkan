@@ -112,6 +112,7 @@ Window::Window(size_t const& width, size_t const& height, std::string windowTitl
             surface, std::make_pair(this->width, this->height));
 
     CHECK_VK_SUCCESS(createCommandPool(), "Cannot create command Pool!");
+    CHECK_VK_SUCCESS(createTransferCmdPool(), "Cannot create transfer command pool!");
 
     graphicsPipeline = std::make_unique<GraphicsPipeline>(
             &logicalDev, dev, &cmdPool, surface,
@@ -124,7 +125,9 @@ Window::Window(size_t const& width, size_t const& height, std::string windowTitl
     }
 
     vertexBuffer = std::make_unique<VertexBuffer<Vertex>>(
-            &logicalDev, dev, verts);
+            &logicalDev,
+            dev,
+            verts, queueFamilyIndex.queuesForTransfer() );
 }
 
 int Window::mainLoop()
@@ -177,6 +180,7 @@ Window::~Window()
     frameSemaphores.clear();
     graphicsPipeline.reset();
     swapchainComponent.reset();
+    vkDestroyCommandPool(logicalDev, cmdTransferPool, nullptr);
     vkDestroyCommandPool(logicalDev, cmdPool, nullptr);
 
 #if ENABLE_VALIDATION_LAYERS == 1
@@ -293,8 +297,8 @@ VkPhysicalDevice Window::selectPhysicalDev()
 
 VkResult Window::createLogicalDevice()
 {
-    QueueFamilies queueFam(dev, surface);
-    if (not queueFam.suitable())
+    queueFamilyIndex = QueueFamilies(dev, surface);
+    if (not queueFamilyIndex.suitable())
     {
         throw std::runtime_error("Cannot create device queue on GPU.");
     }
@@ -304,19 +308,24 @@ VkResult Window::createLogicalDevice()
 
     float priority = 1.f;
     VkDeviceQueueCreateInfo createQueueInfo = {};
-
     createQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    createQueueInfo.queueFamilyIndex = queueFam.graphicsFamily.value();
+    createQueueInfo.queueFamilyIndex = queueFamilyIndex.graphicsFamily.value();
     createQueueInfo.queueCount = 1;
     createQueueInfo.pQueuePriorities = &priority;
 
     VkDeviceQueueCreateInfo presentationQueueInfo = {};
     presentationQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    presentationQueueInfo.queueFamilyIndex = queueFam.presentationFamily.value();
+    presentationQueueInfo.queueFamilyIndex = queueFamilyIndex.presentationFamily.value();
     presentationQueueInfo.queueCount = 1;
     presentationQueueInfo.pQueuePriorities = &priority;
 
-    VkDeviceQueueCreateInfo queues[] = {createQueueInfo, presentationQueueInfo};
+    VkDeviceQueueCreateInfo transferQueueInfo = {};
+    transferQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    transferQueueInfo.queueFamilyIndex = queueFamilyIndex.transferQueueFamily();
+    transferQueueInfo.queueCount = 1;
+    transferQueueInfo.pQueuePriorities = &priority;
+
+    VkDeviceQueueCreateInfo queues[] = {createQueueInfo, presentationQueueInfo, transferQueueInfo};
 
     VkPhysicalDeviceFeatures feat = {};
 
@@ -324,15 +333,17 @@ VkResult Window::createLogicalDevice()
 
     VkDeviceCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    createInfo.queueCreateInfoCount = 2;
+    createInfo.queueCreateInfoCount = 3;
     createInfo.pQueueCreateInfos = queues;
     createInfo.pEnabledFeatures = &feat;
     createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExts.size());
     createInfo.ppEnabledExtensionNames = deviceExts.data();
 
     VkResult result = vkCreateDevice(dev, &createInfo, nullptr, &logicalDev);
-    vkGetDeviceQueue(logicalDev, queueFam.graphicsFamily.value(), 0, &graphicsQueue);
-    vkGetDeviceQueue(logicalDev, queueFam.presentationFamily.value(), 0, &presentQueue);
+    vkGetDeviceQueue(logicalDev, queueFamilyIndex.graphicsFamily.value(), 0, &graphicsQueue);
+    vkGetDeviceQueue(logicalDev, queueFamilyIndex.presentationFamily.value(), 0, &presentQueue);
+    vkGetDeviceQueue(logicalDev, queueFamilyIndex.transferQueueFamily(), 0, &transferQueue);
+
 
     return result;
 }
@@ -522,17 +533,21 @@ void Window::initCallbacks()
 
 VkResult Window::createCommandPool()
 {
-    QueueFamilies queueFam(dev, surface);
-    if (not queueFam.suitable())
-    {
-        throw std::runtime_error("Queue family failed!");
-    }
-
     VkCommandPoolCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    createInfo.queueFamilyIndex = queueFam.graphicsFamily.value();
+    createInfo.queueFamilyIndex = queueFamilyIndex.graphicsFamily.value();
     createInfo.flags = 0;
 
     return vkCreateCommandPool(logicalDev, &createInfo, nullptr, &cmdPool);
+}
+
+VkResult Window::createTransferCmdPool()
+{
+    VkCommandPoolCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    createInfo.queueFamilyIndex = queueFamilyIndex.transferQueueFamily();
+    createInfo.flags = 0;
+
+    return vkCreateCommandPool(logicalDev, &createInfo, nullptr, &cmdTransferPool);
 }
 

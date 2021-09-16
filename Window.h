@@ -37,6 +37,8 @@ protected:
     VkResult createLogicalDevice();
     VkResult createSurface();
     VkResult createCommandPool();
+    VkResult createTransferCmdPool();
+
     void recordCommands();
     void drawFrame();
     void resetSwapChain();
@@ -93,13 +95,16 @@ private:
     VkPhysicalDevice dev = {};
     VkDevice logicalDev = {};
 
+    QueueFamilies queueFamilyIndex;
     VkQueue graphicsQueue = {};
     VkQueue presentQueue = {};
+    VkQueue transferQueue = {};
 
     VkSurfaceKHR surface = {};
 
     std::unique_ptr<SwapchainComponents> swapchainComponent;
-    VkCommandPool cmdPool;
+    VkCommandPool cmdPool = VK_NULL_HANDLE;
+    VkCommandPool cmdTransferPool = VK_NULL_HANDLE;
     std::unique_ptr<GraphicsPipeline> graphicsPipeline;
 
     std::unique_ptr<VertexBuffer<Vertex>> vertexBuffer;

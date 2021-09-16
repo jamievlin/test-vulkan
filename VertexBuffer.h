@@ -21,10 +21,19 @@ public:
     VertexBuffer(
             VkDevice* dev,
             VkPhysicalDevice const& physicalDev,
-            std::vector<TVertex> const& vertices
+            std::vector<TVertex> const& vertices,
+            std::optional<std::set<uint32_t>> const& usedQueues=nullopt
             ) : logicalDev(dev), size(vertices.size() * sizeof(TVertex))
     {
-        CHECK_VK_SUCCESS(createVertexBuffer(), "Cannot create Vertex buffer!");
+        if (usedQueues.has_value() and usedQueues.value().size() > 1)
+        {
+            CHECK_VK_SUCCESS(createVertexBufferConcurrent(usedQueues.value()), "Cannot create Vertex buffer!");
+        }
+        else
+        {
+            CHECK_VK_SUCCESS(createVertexBuffer(), "Cannot create Vertex buffer!");
+        }
+
         CHECK_VK_SUCCESS(allocateMemory(physicalDev), "Cannot allocate device memory!");
 
         CHECK_VK_SUCCESS(vkBindBufferMemory(*logicalDev, vertexBuffer, deviceMemory, 0), "Cannot bind buffer!");
@@ -53,9 +62,9 @@ public:
     }
 
     [[nodiscard]]
-    size_t getSize() const
+    uint32_t getSize() const
     {
-        return size;
+        return static_cast<uint32_t>(size);
     }
 
 
@@ -66,6 +75,25 @@ public:
         createInfo.size = size;
         createInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        createInfo.queueFamilyIndexCount = 0;
+        createInfo.pQueueFamilyIndices = nullptr;
+
+        return vkCreateBuffer(*logicalDev, &createInfo, nullptr, &vertexBuffer);
+    }
+
+    VkResult createVertexBufferConcurrent(std::set<uint32_t> const& queues)
+    {
+        VkBufferCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        createInfo.size = size;
+        createInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        createInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+
+        createInfo.queueFamilyIndexCount = static_cast<uint32_t>(queues.size());
+
+        std::vector<uint32_t> queueVec(queues.size());
+        queueVec.assign(queues.begin(), queues.end());
+        createInfo.pQueueFamilyIndices = queueVec.data();
 
         return vkCreateBuffer(*logicalDev, &createInfo, nullptr, &vertexBuffer);
     }

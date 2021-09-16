@@ -10,7 +10,7 @@ uint32_t getMemoryType(VkPhysicalDevice const& physicalDev, VkMemoryPropertyFlag
     vkGetPhysicalDeviceMemoryProperties(physicalDev, &physMemProperty);
 
     uint32_t mask = 1;
-    for (int i=0;i<physMemProperty.memoryTypeCount; ++i)
+    for (uint32_t i=0;i<physMemProperty.memoryTypeCount; ++i)
     {
         if (
                 (filter & mask) &&
