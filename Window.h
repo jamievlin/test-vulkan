@@ -6,7 +6,7 @@
 #include "GraphicsPipeline.h"
 #include "FrameSemaphores.h"
 #include "Vertex.h"
-#include "VertexBuffer.h"
+#include "VertexBuffers.h"
 
 
 std::vector<char const*> getRequiredExts();
@@ -107,7 +107,7 @@ private:
     VkCommandPool cmdTransferPool = VK_NULL_HANDLE;
     std::unique_ptr<GraphicsPipeline> graphicsPipeline;
 
-    std::unique_ptr<VertexBuffer<Vertex>> vertexBuffer;
+    std::unique_ptr<Buffers::VertexBuffer<Vertex>> vertexBuffer;
 
     std::vector<FrameSemaphores> frameSemaphores;
     size_t currentFrame = 0;

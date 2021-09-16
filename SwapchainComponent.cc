@@ -4,9 +4,6 @@
 
 #include "SwapchainComponent.h"
 
-constexpr char const* FAILED_CREATE_SWAP_CHAIN = "Cannot create swap chain!";
-constexpr char const* FAILED_CREATE_RENDER_PASS = "Cannot create render pass!";
-
 VkResult
 SwapchainComponents::initSwapChain(
         VkPhysicalDevice const& physDevice,
@@ -16,7 +13,7 @@ SwapchainComponents::initSwapChain(
 
     if (!detail.adequate())
     {
-        throw std::runtime_error("Cannot create Swap Chain!");
+        throw std::runtime_error(ErrorMessages::FAILED_CREATE_SWAP_CHAIN);
     }
 
     swapchainFormat=detail.selectFmt();
@@ -27,7 +24,7 @@ SwapchainComponents::initSwapChain(
             detail.capabilities.maxImageCount);
     if (imgCount == 0)
     {
-        throw std::runtime_error("Driver does not support Image buffer!");
+        throw std::runtime_error(ErrorMessages::FAILED_DRIVER_NOT_SUPPORT_IMGBUFFER);
     }
 
     VkSwapchainCreateInfoKHR createInfo = {};
@@ -44,7 +41,7 @@ SwapchainComponents::initSwapChain(
     QueueFamilies fam(physDevice, surface);
     if (not fam.suitable())
     {
-        throw std::runtime_error("Cannot create queue family!");
+        throw std::runtime_error(ErrorMessages::FAILED_CREATE_QUEUE_FAMILY);
     }
     uint32_t idx[] = {
             fam.graphicsFamily.value(),
@@ -126,7 +123,7 @@ SwapchainComponents::SwapchainComponents(
 {
     CHECK_VK_SUCCESS(
             initSwapChain(physDevice, windowHeight, surface),
-            FAILED_CREATE_SWAP_CHAIN);
+            ErrorMessages::FAILED_CREATE_SWAP_CHAIN);
 
     // get swap chain image
     uint32_t imageCount;
@@ -136,7 +133,7 @@ SwapchainComponents::SwapchainComponents(
 
     CHECK_VK_SUCCESS(
             createRenderPasses(),
-            FAILED_CREATE_RENDER_PASS);
+            ErrorMessages::FAILED_CREATE_RENDER_PASS);
 
     std::transform(swapChainImages.begin(), swapChainImages.end(),
                    std::back_inserter(swapchainSupport),

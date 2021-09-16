@@ -36,5 +36,6 @@ using std::optional;
 using std::nullopt;
 
 #include "utils.h"
+#include "ErrorMessages.h"
 
 #define CHECK_VK_SUCCESS(fn, msg) if ((fn) != VK_SUCCESS) { throw std::runtime_error(msg); }

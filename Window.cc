@@ -96,14 +96,14 @@ Window::Window(size_t const& width, size_t const& height, std::string windowTitl
     initCallbacks();
 
     // instance creation
-    CHECK_VK_SUCCESS(initInstance(), "Cannot create Vulkan instance.");
+    CHECK_VK_SUCCESS(initInstance(), ErrorMessages::FAILED_CANNOT_CREATE_INSTANCE);
     // setup messenger
 #if ENABLE_VALIDATION_LAYERS == 1
     CHECK_VK_SUCCESS(setupDebugMessenger(), "Cannot set up debug messenger!");
 #endif
-    CHECK_VK_SUCCESS(createSurface(), "Cannot create surface!");
+    CHECK_VK_SUCCESS(createSurface(), ErrorMessages::FAILED_CANNOT_CREATE_SURFACE);
     dev = selectPhysicalDev();
-    CHECK_VK_SUCCESS(createLogicalDevice(), "Cannot create Vulkan logical device.");
+    CHECK_VK_SUCCESS(createLogicalDevice(), ErrorMessages::FAILED_CANNOT_CREATE_LOGICAL_DEV);
 
     // end selection of logical device
 
@@ -124,7 +124,7 @@ Window::Window(size_t const& width, size_t const& height, std::string windowTitl
         frameSemaphores.emplace_back(&logicalDev);
     }
 
-    vertexBuffer = std::make_unique<VertexBuffer<Vertex>>(
+    vertexBuffer = std::make_unique<Buffers::VertexBuffer<Vertex>>(
             &logicalDev,
             dev,
             verts, queueFamilyIndex.queuesForTransfer() );
