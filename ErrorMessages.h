@@ -19,4 +19,8 @@ namespace ErrorMessages
     CHAR_CONSTEXPR FAILED_CANNOT_CREATE_SURFACE = "Cannot create surface!";
     CHAR_CONSTEXPR FAILED_CANNOT_CREATE_LOGICAL_DEV = "Cannot create Vulkan logical device.";
 
+    CHAR_CONSTEXPR FAILED_CANNOT_CREATE_CMD_BUFFER = "Cannot allocate command buffer!";
+    CHAR_CONSTEXPR FAILED_CANNOT_BEGIN_CMD_BUFFER = "Cannot begin command buffer!";
+    CHAR_CONSTEXPR FAILED_CANNOT_END_CMD_BUFFER = "Cannot end command buffer!";
+
 }

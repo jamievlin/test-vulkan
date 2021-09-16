@@ -4,6 +4,7 @@
 
 #include "Buffers.h"
 
+
 namespace Buffers
 {
     uint32_t getMemoryType(VkPhysicalDevice const& physicalDev, VkMemoryPropertyFlags properties, uint32_t filter)
@@ -26,8 +27,10 @@ namespace Buffers
         throw std::runtime_error("Cannot find suitable memory type!");
     }
 
-    Buffer::Buffer(VkDevice* dev, size_t const& bufferSize, VkPhysicalDevice const& physicalDev,
-                   VkBufferUsageFlags const& bufferUsageFlags, optUint32Set const& usedQueues
+    Buffer::Buffer(VkDevice* dev, VkPhysicalDevice const& physicalDev, size_t const& bufferSize,
+                   VkBufferUsageFlags const& bufferUsageFlags,
+                   VkMemoryPropertyFlags const& memoryFlags,
+                   optUint32Set const& usedQueues
                    ) : logicalDev(dev), size(bufferSize)
     {
         if (usedQueues.has_value() and usedQueues.value().size() > 1)
@@ -40,7 +43,7 @@ namespace Buffers
         {
             CHECK_VK_SUCCESS(createVertexBuffer(bufferUsageFlags), "Cannot create buffer!");
         }
-        CHECK_VK_SUCCESS(allocateMemory(physicalDev), "Cannot allocate device memory!");
+        CHECK_VK_SUCCESS(allocateMemory(physicalDev, memoryFlags), "Cannot allocate device memory!");
 
         CHECK_VK_SUCCESS(vkBindBufferMemory(*getLogicalDev(), vertexBuffer, deviceMemory, 0),
                          "Cannot bind buffer!");
@@ -120,7 +123,7 @@ namespace Buffers
         return vkCreateBuffer(*logicalDev, &createInfo, nullptr, &vertexBuffer);
     }
 
-    VkResult Buffer::allocateMemory(VkPhysicalDevice const& physicalDev)
+    VkResult Buffer::allocateMemory(VkPhysicalDevice const& physicalDev, VkMemoryPropertyFlags const& memoryFlags)
     {
         VkMemoryRequirements memReq = {};
         vkGetBufferMemoryRequirements(*logicalDev, vertexBuffer, &memReq);
@@ -128,10 +131,7 @@ namespace Buffers
         VkMemoryAllocateInfo allocateInfo = {};
         allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocateInfo.allocationSize = memReq.size;
-        allocateInfo.memoryTypeIndex =
-                getMemoryType(physicalDev,
-                              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                              memReq.memoryTypeBits);
+        allocateInfo.memoryTypeIndex = getMemoryType(physicalDev, memoryFlags, memReq.memoryTypeBits);
 
         return vkAllocateMemory(*logicalDev, &allocateInfo, nullptr, &deviceMemory);
     }
@@ -140,4 +140,72 @@ namespace Buffers
     {
         return logicalDev;
     }
+
+    VkResult Buffer::loadData(void const* data, VkDeviceSize const& offset)
+    {
+        void* inSrc = nullptr;
+        auto ret = vkMapMemory(*logicalDev, deviceMemory, offset, size, 0, &inSrc);
+        if (ret == VK_SUCCESS)
+        {
+            memcpy(inSrc, data, size);
+            vkUnmapMemory(*getLogicalDev(), deviceMemory);
+        }
+        return ret;
+    }
+
+    void Buffer::cmdCopyDataFrom(VkBuffer const& src,
+                                 VkCommandBuffer& transferBuffer) const
+    {
+        VkBufferCopy copyRegion = {};
+        copyRegion.srcOffset = 0;
+        copyRegion.dstOffset = 0;
+        copyRegion.size = size;
+        vkCmdCopyBuffer(transferBuffer, src, vertexBuffer, 1, &copyRegion);
+    }
+
+    void Buffer::copyDataFrom(
+            VkBuffer const& src,
+            VkQueue& transferQueue, VkCommandPool& transferCmdPool) const
+    {
+        VkCommandBufferAllocateInfo allocateInfo = {};
+        allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocateInfo.commandPool = transferCmdPool;
+        allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        // 1 command buffer per frame buffer
+        allocateInfo.commandBufferCount = 1;
+
+        VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
+        CHECK_VK_SUCCESS(vkAllocateCommandBuffers(*logicalDev, &allocateInfo, &cmdBuffer),
+                         ErrorMessages::FAILED_CANNOT_CREATE_CMD_BUFFER);
+
+        VkCommandBufferBeginInfo beginInfo = {};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        CHECK_VK_SUCCESS(vkBeginCommandBuffer(cmdBuffer, &beginInfo),
+                         ErrorMessages::FAILED_CANNOT_BEGIN_CMD_BUFFER);
+        cmdCopyDataFrom(src, cmdBuffer);
+        CHECK_VK_SUCCESS(vkEndCommandBuffer(cmdBuffer),
+                         ErrorMessages::FAILED_CANNOT_END_CMD_BUFFER);
+
+        VkSubmitInfo submitInfo = {};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &cmdBuffer;
+        vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
+
+        vkQueueWaitIdle(transferQueue);
+        vkFreeCommandBuffers(*logicalDev, transferCmdPool, 1, &cmdBuffer);
+    }
+
+    void Buffer::copyDataFrom(Buffer const& src, VkQueue& transferQueue, VkCommandPool& transferCmdPool) const
+    {
+        copyDataFrom(src.vertexBuffer, transferQueue, transferCmdPool);
+    }
+
+    void Buffer::cmdCopyDataFrom(Buffer const& src, VkCommandBuffer& transferBuffer) const
+    {
+        cmdCopyDataFrom(src.vertexBuffer, transferBuffer);
+    }
+
 } // namespace Buffers

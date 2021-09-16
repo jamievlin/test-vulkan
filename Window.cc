@@ -124,10 +124,23 @@ Window::Window(size_t const& width, size_t const& height, std::string windowTitl
         frameSemaphores.emplace_back(&logicalDev);
     }
 
+    Buffers::Buffer stagingBuffer(
+            &logicalDev, dev,
+            verts.size() * sizeof(Vertex),
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            queueFamilyIndex.queuesForTransfer());
+
+    stagingBuffer.loadData(verts.data());
+
     vertexBuffer = std::make_unique<Buffers::VertexBuffer<Vertex>>(
             &logicalDev,
-            dev,
-            verts, queueFamilyIndex.queuesForTransfer() );
+            dev, verts.size(),
+            queueFamilyIndex.queuesForTransfer(),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    vertexBuffer->copyDataFrom(stagingBuffer, transferQueue, cmdTransferPool);
 }
 
 int Window::mainLoop()

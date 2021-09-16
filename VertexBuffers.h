@@ -20,31 +20,36 @@ namespace Buffers
                 VkDevice* dev,
                 VkPhysicalDevice const& physicalDev,
                 std::vector<TVertex> const& vertices,
-                optUint32Set const& usedQueues = nullopt
-
-        ) : Buffer(dev,
+                optUint32Set const& usedQueues = nullopt,
+                VkFlags const& additionalFlags = 0,
+                VkMemoryPropertyFlags const& memoryFlags = 0
+        ) : Buffer(dev, physicalDev,
                    vertices.size() * sizeof(TVertex),
-                   physicalDev,
-                   VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                   VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | additionalFlags,
+                   memoryFlags,
                    usedQueues)
         {
             // Memory requirements
-            CHECK_VK_SUCCESS(copyData(vertices), "Cannot copy data!");
+            CHECK_VK_SUCCESS(loadData(vertices.data()), "Cannot copy data!");
+        }
+
+        VertexBuffer(
+                VkDevice* dev,
+                VkPhysicalDevice const& physicalDev,
+                size_t vertexBufferLength,
+                optUint32Set const& usedQueues = nullopt,
+                VkFlags const& additionalFlags = 0,
+                VkMemoryPropertyFlags const& memoryFlags = 0
+
+        ) : Buffer(dev, physicalDev,
+                   vertexBufferLength * sizeof(TVertex),
+                   VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | additionalFlags,
+                   memoryFlags,
+                   usedQueues)
+        {
         }
 
         VertexBuffer(VertexBuffer const&) = delete;
-
         VertexBuffer& operator=(VertexBuffer const&) = delete;
-
-        VkResult copyData(std::vector<TVertex> const& data)
-        {
-            void* dat = nullptr;
-            auto ret = vkMapMemory(*getLogicalDev(), deviceMemory, 0, sizeof(TVertex) * data.size(), 0, &dat);
-            memcpy(dat, data.data(), getSize());
-
-            vkUnmapMemory(*getLogicalDev(), deviceMemory);
-
-            return ret;
-        }
     };
 }
