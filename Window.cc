@@ -278,6 +278,38 @@ VkResult Window::initInstance()
     return vkCreateInstance(&createInfo, nullptr, &instance);
 }
 
+// assume little endian here - x86+ARM are both little endian
+#define NVIDIA_VENDOR_ID 0x000010DE
+#define AMD_VENDOR_ID 0x00001002
+
+bool GPUHigherPriority(VkPhysicalDevice const& pd1, VkPhysicalDevice const& pd2)
+{
+    if (pd2 == VK_NULL_HANDLE)
+    {
+        return true;
+    }
+
+    if (pd1 == pd2)
+    {
+        return false;
+    }
+
+    VkPhysicalDeviceProperties dv1 = {}, dv2 = {};
+    vkGetPhysicalDeviceProperties(pd1, &dv1);
+    vkGetPhysicalDeviceProperties(pd2, &dv2);
+
+    // mostly heuristic here
+    // try to avoid software GPU
+    bool dv1IsNVIDIAorAMD = dv1.vendorID == NVIDIA_VENDOR_ID || dv1.vendorID == AMD_VENDOR_ID;
+    bool dv21IsNVIDIAorAMD = dv2.vendorID == NVIDIA_VENDOR_ID || dv2.vendorID == AMD_VENDOR_ID;
+    if (dv1IsNVIDIAorAMD && !dv21IsNVIDIAorAMD)
+    {
+        return true;
+    }
+
+    return false;
+}
+
 VkPhysicalDevice Window::selectPhysicalDev()
 {
     VkPhysicalDevice physDev = VK_NULL_HANDLE;
@@ -293,11 +325,11 @@ VkPhysicalDevice Window::selectPhysicalDev()
 
     for (auto const& devList : devs)
     {
+
         QueueFamilies fam(devList, surface);
-        if (deviceSuitable(devList) && fam.suitable())
+        if (deviceSuitable(devList) && fam.suitable() && GPUHigherPriority(devList, physDev))
         {
             physDev = devList;
-            break;
         }
     }
 
@@ -305,6 +337,7 @@ VkPhysicalDevice Window::selectPhysicalDev()
     {
         throw std::runtime_error("Could not find a Vulkan-capable GPU!");
     }
+
     return physDev;
 }
 
