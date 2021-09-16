@@ -38,4 +38,21 @@ using std::nullopt;
 #include "utils.h"
 #include "ErrorMessages.h"
 
-#define CHECK_VK_SUCCESS(fn, msg) if ((fn) != VK_SUCCESS) { throw std::runtime_error(msg); }
+#if defined(_WIN32) && defined(DEBUG)
+#define PRINT_ERR_MSG(msg) std::cerr << "Error message: " << (msg) << std::endl;
+#else
+// already printed out in linux
+#define PRINT_ERR_MSG(msg)
+#endif
+
+#if defined(DEBUG)
+#define PRINT_ERROR_LINE() std::cerr << "Runtime error at " << __FILE__ << ":" << __LINE__ << std::endl
+#else
+#define PRINT_ERROR_LINE()
+#endif
+
+#define CHECK_VK_SUCCESS(fn, msg) if ((fn) != VK_SUCCESS) { \
+    PRINT_ERROR_LINE();                                     \
+    PRINT_ERR_MSG(msg);                                     \
+    throw std::runtime_error(msg);                          \
+    }
