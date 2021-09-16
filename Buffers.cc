@@ -41,6 +41,9 @@ namespace Buffers
             CHECK_VK_SUCCESS(createVertexBuffer(bufferUsageFlags), "Cannot create buffer!");
         }
         CHECK_VK_SUCCESS(allocateMemory(physicalDev), "Cannot allocate device memory!");
+
+        CHECK_VK_SUCCESS(vkBindBufferMemory(*getLogicalDev(), vertexBuffer, deviceMemory, 0),
+                         "Cannot bind buffer!");
     }
 
     Buffer::Buffer(Buffer&& buf) noexcept:
@@ -65,11 +68,8 @@ namespace Buffers
     {
         if (isInitialized())
         {
-            if (logicalDev)
-            {
-                vkFreeMemory(*logicalDev, deviceMemory, nullptr);
-                vkDestroyBuffer(*logicalDev, vertexBuffer, nullptr);
-            }
+            vkFreeMemory(*logicalDev, deviceMemory, nullptr);
+            vkDestroyBuffer(*logicalDev, vertexBuffer, nullptr);
         }
     }
 

@@ -28,8 +28,6 @@ namespace Buffers
                    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                    usedQueues)
         {
-            CHECK_VK_SUCCESS(vkBindBufferMemory(*getLogicalDev(), vertexBuffer, deviceMemory, 0),
-                             "Cannot bind buffer!");
             // Memory requirements
             CHECK_VK_SUCCESS(copyData(vertices), "Cannot copy data!");
         }
