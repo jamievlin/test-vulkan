@@ -1,5 +1,6 @@
 #include "Window.h"
 #include "Vertex.h"
+#include "DisposableCmdBuffer.h"
 
 #include <utility>
 
@@ -16,6 +17,12 @@ const std::vector<Vertex> verts = {
         {{0.f, 0.f}, {1.f, 0.f, 0.f}},
         {{0.5f, 0.f}, {0.f, 1.f, 0.f}},
         {{0.f, 0.5f}, {0.f, 0.f, 1.f}},
+        {{0.5f, 0.5f}, {0.5f, 0.5f, 0.5f}},
+};
+
+const std::vector<uint32_t> idx = {
+        0,1,2,
+        1,3,2
 };
 
 std::vector<char const*> getRequiredExts()
@@ -124,23 +131,8 @@ Window::Window(size_t const& width, size_t const& height, std::string windowTitl
         frameSemaphores.emplace_back(&logicalDev);
     }
 
-    Buffers::Buffer stagingBuffer(
-            &logicalDev, dev,
-            verts.size() * sizeof(Vertex),
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            queueFamilyIndex.queuesForTransfer());
-
-    stagingBuffer.loadData(verts.data());
-
-    vertexBuffer = std::make_unique<Buffers::VertexBuffer<Vertex>>(
-            &logicalDev,
-            dev, verts.size(),
-            queueFamilyIndex.queuesForTransfer(),
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-    vertexBuffer->copyDataFrom(stagingBuffer, transferQueue, cmdTransferPool);
+    // for vertex buffer
+    initBuffers();
 }
 
 int Window::mainLoop()
@@ -189,6 +181,7 @@ VkResult Window::setupDebugMessenger()
 
 Window::~Window()
 {
+    idxBuffer.reset();
     vertexBuffer.reset();
     frameSemaphores.clear();
     graphicsPipeline.reset();
@@ -216,9 +209,9 @@ VkResult Window::initInstance()
     VkApplicationInfo appInfo = {};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = "Hello Vulkan!";
-    appInfo.applicationVersion = VK_MAKE_VERSION(1,0,0);
+    appInfo.applicationVersion = VK_MAKE_API_VERSION(0,1,0,0);
     appInfo.pEngineName = "What?";
-    appInfo.engineVersion = VK_MAKE_VERSION(1,0,0);
+    appInfo.engineVersion = VK_MAKE_API_VERSION(0,1,0,0);
     appInfo.apiVersion = VK_API_VERSION_1_2;
 
     auto extNeeded = getRequiredExts();
@@ -442,9 +435,11 @@ void Window::recordCommands()
         VkBuffer vertBuffers[] = { vertexBuffer->vertexBuffer };
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(cmdBuf, 0, 1, vertBuffers, offsets);
+        vkCmdBindIndexBuffer(cmdBuf, idxBuffer->vertexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
         // actual drawing command :)
-        vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
+        // vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
+        vkCmdDrawIndexed(cmdBuf, static_cast<uint32_t>(idx.size()), 1, 0, 0, 0);
 
         vkCmdEndRenderPass(cmdBuf);
 
@@ -597,3 +592,43 @@ VkResult Window::createTransferCmdPool()
     return vkCreateCommandPool(logicalDev, &createInfo, nullptr, &cmdTransferPool);
 }
 
+void Window::initBuffers()
+{
+    Buffers::Buffer stagingBuffer(
+            &logicalDev, dev, verts.size() * sizeof(Vertex),
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            queueFamilyIndex.queuesForTransfer());
+
+    stagingBuffer.loadData(verts.data());
+
+    vertexBuffer = std::make_unique<Buffers::VertexBuffer<Vertex>>(
+            &logicalDev, dev, verts.size(),
+            queueFamilyIndex.queuesForTransfer(),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    Buffers::Buffer stagingBufferIdx(
+            &logicalDev, dev, idx.size() * sizeof(uint32_t),
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            queueFamilyIndex.queuesForTransfer());
+
+    stagingBufferIdx.loadData(idx.data());
+
+    idxBuffer = std::make_unique<Buffers::IndexBuffer>(
+            &logicalDev, dev, idx.size(),
+            queueFamilyIndex.queuesForTransfer(),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    // submit in one batch
+    DisposableCmdBuffer dcb(&logicalDev, &cmdTransferPool);
+
+    vertexBuffer->cmdCopyDataFrom(stagingBuffer, dcb.commandBuffer());
+    idxBuffer->cmdCopyDataFrom(stagingBufferIdx, dcb.commandBuffer());
+
+    dcb.finish();
+    CHECK_VK_SUCCESS(dcb.submit(transferQueue), ErrorMessages::FAILED_CANNOT_SUBMIT_QUEUE);
+    CHECK_VK_SUCCESS(vkQueueWaitIdle(transferQueue), ErrorMessages::FAILED_WAIT_IDLE);
+}

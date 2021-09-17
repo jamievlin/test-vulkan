@@ -192,9 +192,12 @@ namespace Buffers
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &cmdBuffer;
-        vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
 
-        vkQueueWaitIdle(transferQueue);
+        // not exactly the best idea. One cmd per copy data is suboptimal.
+        CHECK_VK_SUCCESS(vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE),
+                         ErrorMessages::FAILED_CANNOT_SUBMIT_QUEUE);
+
+        CHECK_VK_SUCCESS(vkQueueWaitIdle(transferQueue), ErrorMessages::FAILED_WAIT_IDLE);
         vkFreeCommandBuffers(*logicalDev, transferCmdPool, 1, &cmdBuffer);
     }
 

@@ -5,12 +5,14 @@
 #include "QueueFamilies.h"
 
 QueueFamilies::QueueFamilies(VkPhysicalDevice const& dev, VkSurfaceKHR const& surf) :
-    graphicsFamily(nullopt), presentationFamily(nullopt)
+    graphicsFamily(nullopt), presentationFamily(nullopt), transferFamily(nullopt)
 {
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(dev, &queueFamilyCount, nullptr);
     std::vector<VkQueueFamilyProperties> queueFamilyVec(queueFamilyCount);
     vkGetPhysicalDeviceQueueFamilyProperties(dev, &queueFamilyCount, queueFamilyVec.data());
+
+    std::vector<uint32_t> possibleTransferQueues;
 
     for (int i = 0; i < queueFamilyVec.size(); ++i)
     {
@@ -22,18 +24,32 @@ QueueFamilies::QueueFamilies(VkPhysicalDevice const& dev, VkSurfaceKHR const& su
             graphicsFamily = i;
         }
 
-        if (queueFlags & VK_QUEUE_TRANSFER_BIT
-            && (queueFlags & ~VK_QUEUE_GRAPHICS_BIT))
-        {
-            transferFamily = i;
-        }
-
         VkBool32 presentSupport = false;
         vkGetPhysicalDeviceSurfaceSupportKHR(dev, i, surf, &presentSupport);
         if (presentSupport)
         {
             presentationFamily = i;
         }
+
+        if (queueFlags & VK_QUEUE_TRANSFER_BIT
+            && (queueFlags & ~VK_QUEUE_GRAPHICS_BIT))
+        {
+            if (i != graphicsFamily && i != presentationFamily)
+            {
+                // ideally, a different queue family.
+                transferFamily = i;
+            }
+
+            if (!transferFamily.has_value())
+            {
+                possibleTransferQueues.emplace_back(i);
+            }
+        }
+    }
+
+    if (!transferFamily.has_value() && !possibleTransferQueues.empty())
+    {
+        transferFamily = *possibleTransferQueues.begin();
     }
 }
 

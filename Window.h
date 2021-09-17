@@ -43,6 +43,8 @@ protected:
     void drawFrame();
     void resetSwapChain();
 
+    void initBuffers();
+
     // vk extension functions
     template<typename TPtrExt, typename ...T_args>
     std::function<VkResult (T_args...)> getVkExtension(std::string const& extName)
@@ -108,6 +110,8 @@ private:
     std::unique_ptr<GraphicsPipeline> graphicsPipeline;
 
     std::unique_ptr<Buffers::VertexBuffer<Vertex>> vertexBuffer;
+    std::unique_ptr<Buffers::IndexBuffer> idxBuffer;
+
     std::vector<FrameSemaphores> frameSemaphores;
     size_t currentFrame = 0;
 };

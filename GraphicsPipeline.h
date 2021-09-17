@@ -45,3 +45,4 @@ private:
     VkDevice* logicalDev=nullptr;
     VkCommandPool* cmdPool=nullptr;
 };
+

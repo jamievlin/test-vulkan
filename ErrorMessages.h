@@ -23,4 +23,7 @@ namespace ErrorMessages
     CHAR_CONSTEXPR FAILED_CANNOT_BEGIN_CMD_BUFFER = "Cannot begin command buffer!";
     CHAR_CONSTEXPR FAILED_CANNOT_END_CMD_BUFFER = "Cannot end command buffer!";
 
+    CHAR_CONSTEXPR FAILED_CANNOT_SUBMIT_QUEUE = "Cannot submit queue!";
+    CHAR_CONSTEXPR FAILED_WAIT_IDLE = "Failed waiting for device idle!";
+
 }
