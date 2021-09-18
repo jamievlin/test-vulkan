@@ -6,10 +6,20 @@
 #include "common.h"
 #include "Buffers.h"
 
+#define VEC4_ALIGN alignas(sizeof(glm::vec4))
+
 struct UniformObjects
 {
+    VEC4_ALIGN
+    float time;
+
+    VEC4_ALIGN
     glm::mat4 proj;
+
+    VEC4_ALIGN
     glm::mat4 view;
+
+    VEC4_ALIGN
     glm::mat4 model;
 
     static VkDescriptorSetLayoutBinding descriptorSetLayout(uint32_t binding=0)
@@ -18,7 +28,7 @@ struct UniformObjects
         uboLayout.binding = binding;
         uboLayout.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         uboLayout.descriptorCount = 1;
-        uboLayout.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        uboLayout.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         uboLayout.pImmutableSamplers = nullptr;
 
         return uboLayout;

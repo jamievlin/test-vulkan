@@ -672,7 +672,8 @@ void Window::setUniforms(UniformObjBuffer<UniformObjects>& bufObject)
     glm::vec3 O(0,0,0);
 
     UniformObjects ubo = {};
-    ubo.model = glm::rotate(glm::mat4(1.f), totalTime / 2500.0f, Zup);
+    ubo.time = totalTime / 1000.f;
+    ubo.model = glm::rotate(glm::mat4(1.f), totalTime / 1000.0f, Zup);
     ubo.view = glm::lookAt(
             glm::vec3(0, 0, 2.f),
             O,
