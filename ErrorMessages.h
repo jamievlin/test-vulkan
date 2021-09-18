@@ -26,4 +26,8 @@ namespace ErrorMessages
     CHAR_CONSTEXPR FAILED_CANNOT_SUBMIT_QUEUE = "Cannot submit queue!";
     CHAR_CONSTEXPR FAILED_WAIT_IDLE = "Failed waiting for device idle!";
 
+    CHAR_CONSTEXPR CREATE_GRAPHICS_PIPELINE_FAILED = "Cannot create graphics pipeline!";
+    CHAR_CONSTEXPR CREATE_COMMAND_POOL_FAILED = "Cannot create command pool!";
+    CHAR_CONSTEXPR CREATE_COMMAND_BUFFERS_FAILED = "Cannot create command buffers!";
+
 }

@@ -170,12 +170,12 @@ GraphicsPipeline::GraphicsPipeline(
         logicalDev(device), cmdPool(cmdPool)
 {
     CHECK_VK_SUCCESS(
-            createGraphicsPipeline(vertShader, fragShader, swapChain),
-            CREATE_GRAPHICS_PIPELINE_FAILED);
+            createGraphicsPipeline(vertShader, fragShader, swapChain, descriptorSetLayout),
+            ErrorMessages::CREATE_GRAPHICS_PIPELINE_FAILED);
 
     CHECK_VK_SUCCESS(
             createCmdBuffers(swapChain),
-            CREATE_COMMAND_BUFFERS_FAILED);
+            ErrorMessages::CREATE_COMMAND_BUFFERS_FAILED);
 }
 
 VkResult GraphicsPipeline::createCmdBuffers(SwapchainComponents const& swapChain)

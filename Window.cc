@@ -118,7 +118,7 @@ Window::Window(size_t const& width, size_t const& height, std::string windowTitl
             &logicalDev, dev,
             surface, std::make_pair(this->width, this->height));
 
-    CHECK_VK_SUCCESS(createCommandPool(), "Cannot create command Pool!");
+    CHECK_VK_SUCCESS(createCommandPool(), ErrorMessages::CREATE_COMMAND_POOL_FAILED);
     CHECK_VK_SUCCESS(createTransferCmdPool(), "Cannot create transfer command pool!");
 
     graphicsPipeline = std::make_unique<GraphicsPipeline>(
