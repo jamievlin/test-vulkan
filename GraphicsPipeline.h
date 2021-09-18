@@ -7,6 +7,7 @@
 #include "QueueFamilies.h"
 #include "SwapchainComponent.h"
 #include "Shaders.h"
+#include "UniformObjects.h"
 
 class GraphicsPipeline
 {
@@ -14,6 +15,7 @@ public:
     VkPipeline pipeline = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> cmdBuffers;
+    std::vector<VkDescriptorSet> descriptorSet;
 
     GraphicsPipeline() = default;
     GraphicsPipeline(
@@ -23,7 +25,8 @@ public:
             VkSurfaceKHR const& surface,
             std::string const& vertShader,
             std::string const& fragShader,
-            SwapchainComponents const& swapChain);
+            SwapchainComponents const& swapChain,
+            std::vector<VkDescriptorSetLayout> const& descriptorSetLayout = {});
 
     GraphicsPipeline(GraphicsPipeline const&) = delete;
     GraphicsPipeline& operator=(GraphicsPipeline const&) = delete;
@@ -37,7 +40,8 @@ protected:
     VkResult createGraphicsPipeline(
             std::string const& vertShaderName,
             std::string const& fragShaderName,
-            SwapchainComponents const& swapChain);
+            SwapchainComponents const& swapChain,
+            std::vector<VkDescriptorSetLayout> const& descriptorSetLayout);
 
     VkResult createCmdBuffers(SwapchainComponents const& swapChain);
 

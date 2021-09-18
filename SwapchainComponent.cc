@@ -119,7 +119,8 @@ VkResult SwapchainComponents::createRenderPasses()
 
 SwapchainComponents::SwapchainComponents(
         VkDevice* logicalDev, VkPhysicalDevice const& physDevice,
-        VkSurfaceKHR const& surface, std::pair<size_t, size_t> const& windowHeight) : detail(physDevice, surface), logicalDev(logicalDev)
+        VkSurfaceKHR const& surface, std::pair<size_t, size_t> const& windowHeight) :
+            detail(physDevice, surface), logicalDev(logicalDev)
 {
     CHECK_VK_SUCCESS(
             initSwapChain(physDevice, windowHeight, surface),
@@ -131,9 +132,7 @@ SwapchainComponents::SwapchainComponents(
     swapChainImages.resize(imageCount);
     vkGetSwapchainImagesKHR(*logicalDev, swapChain, &imageCount, swapChainImages.data());
 
-    CHECK_VK_SUCCESS(
-            createRenderPasses(),
-            ErrorMessages::FAILED_CREATE_RENDER_PASS);
+    CHECK_VK_SUCCESS(createRenderPasses(), ErrorMessages::FAILED_CREATE_RENDER_PASS);
 
     std::transform(swapChainImages.begin(), swapChainImages.end(),
                    std::back_inserter(swapchainSupport),
@@ -143,18 +142,20 @@ SwapchainComponents::SwapchainComponents(
                                this->logicalDev, this->renderPass, this->swapchainExtent,
                                swapChainImg, fmt);
                    });
+
+    CHECK_VK_SUCCESS(createDescriptorPool(), ErrorMessages::FAILED_CANNOT_CREATE_DESC_POOL);
 }
 
 SwapchainComponents::SwapchainComponents(SwapchainComponents&& swpchainComp) noexcept:
-        detail(std::move(swpchainComp.detail)), logicalDev(swpchainComp.logicalDev)
+        detail(std::move(swpchainComp.detail)), logicalDev(swpchainComp.logicalDev),
+        swapChain(std::move(swpchainComp.swapChain)),
+        swapChainImages(std::move(swpchainComp.swapChainImages)),
+        swapchainFormat(std::move(swpchainComp.swapchainFormat)),
+        swapchainExtent(std::move(swpchainComp.swapchainExtent)),
+        swapchainSupport(std::move(swpchainComp.swapchainSupport)),
+        renderPass(std::move(swpchainComp.renderPass)),
+        descriptorPool(std::move(swpchainComp.descriptorPool))
 {
-    swapChain = std::move(swpchainComp.swapChain);
-    swapChainImages = std::move(swpchainComp.swapChainImages);
-    swapchainFormat = std::move(swpchainComp.swapchainFormat);
-    swapchainExtent = std::move(swpchainComp.swapchainExtent);
-    swapchainSupport = std::move(swpchainComp.swapchainSupport);
-    renderPass = std::move(swpchainComp.renderPass);
-
     swpchainComp.logicalDev = nullptr;
 }
 
@@ -169,6 +170,7 @@ SwapchainComponents& SwapchainComponents::operator=(SwapchainComponents&& swpcha
     swapchainExtent = std::move(swpchainComp.swapchainExtent);
     swapchainSupport = std::move(swpchainComp.swapchainSupport);
     renderPass = std::move(swpchainComp.renderPass);
+    descriptorPool = std::move(swpchainComp.descriptorPool);
 
     swpchainComp.logicalDev = nullptr;
 
@@ -179,8 +181,8 @@ SwapchainComponents::~SwapchainComponents()
 {
     if (logicalDev)
     {
+        vkDestroyDescriptorPool(*logicalDev, descriptorPool, nullptr);
         vkDestroyRenderPass(*logicalDev, renderPass, nullptr);
-        swapchainSupport.clear();
         vkDestroySwapchainKHR(*logicalDev, swapChain, nullptr);
     }
 }
@@ -188,4 +190,20 @@ SwapchainComponents::~SwapchainComponents()
 uint32_t SwapchainComponents::imageCount() const
 {
     return static_cast<uint32_t>(swapChainImages.size());
+}
+
+VkResult SwapchainComponents::createDescriptorPool()
+{
+    VkDescriptorPoolSize poolSize = {};
+    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSize.descriptorCount = imageCount();
+
+    VkDescriptorPoolCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    createInfo.poolSizeCount = 1;
+    createInfo.pPoolSizes = &poolSize;
+    createInfo.maxSets = imageCount();
+
+    return vkCreateDescriptorPool(*logicalDev, &createInfo, nullptr, &descriptorPool);
+
 }

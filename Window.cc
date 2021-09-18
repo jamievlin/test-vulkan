@@ -1,8 +1,8 @@
 #include "Window.h"
-#include "Vertex.h"
 #include "DisposableCmdBuffer.h"
 
 #include <utility>
+#include <chrono>
 
 #if defined(ENABLE_VALIDATION_LAYERS)
 #include "validationTargets.h"
@@ -121,10 +121,15 @@ Window::Window(size_t const& width, size_t const& height, std::string windowTitl
     CHECK_VK_SUCCESS(createCommandPool(), ErrorMessages::CREATE_COMMAND_POOL_FAILED);
     CHECK_VK_SUCCESS(createTransferCmdPool(), "Cannot create transfer command pool!");
 
+    uniformData = std::make_unique<SwapchainImageBuffers>(
+            &logicalDev, dev, *swapchainComponent, 0
+            );
+
     graphicsPipeline = std::make_unique<GraphicsPipeline>(
             &logicalDev, dev, &cmdPool, surface,
             "main.vert.spv", "main.frag.spv",
-            *swapchainComponent);
+            *swapchainComponent,
+            std::vector<VkDescriptorSetLayout> {uniformData->descriptorSetLayout});
 
     for (size_t i=0; i < MAX_FRAMES_IN_FLIGHT; ++i)
     {
@@ -138,10 +143,17 @@ Window::Window(size_t const& width, size_t const& height, std::string windowTitl
 int Window::mainLoop()
 {
     recordCommands();
+    auto lastTime = std::chrono::high_resolution_clock::now();
     while (not glfwWindowShouldClose(window))
     {
+        auto newTime = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float, std::milli> duration = newTime - lastTime;
+
+        updateFrame(duration.count());
         glfwPollEvents();
         drawFrame();
+
+        lastTime = newTime;
     }
 
     vkDeviceWaitIdle(logicalDev);
@@ -185,6 +197,8 @@ Window::~Window()
     vertexBuffer.reset();
     frameSemaphores.clear();
     graphicsPipeline.reset();
+
+    uniformData.reset();
     swapchainComponent.reset();
     vkDestroyCommandPool(logicalDev, cmdTransferPool, nullptr);
     vkDestroyCommandPool(logicalDev, cmdPool, nullptr);
@@ -404,7 +418,7 @@ VkResult Window::createSurface()
 void Window::recordCommands()
 {
     //begin buffer recording
-    for (size_t i=0; i < graphicsPipeline->cmdBuffers.size(); ++i)
+    for (size_t i=0; i < swapchainComponent->imageCount(); ++i)
     {
         auto const& cmdBuf = graphicsPipeline->cmdBuffers[i];
 
@@ -436,6 +450,13 @@ void Window::recordCommands()
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(cmdBuf, 0, 1, vertBuffers, offsets);
         vkCmdBindIndexBuffer(cmdBuf, idxBuffer->vertexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+        vkCmdBindDescriptorSets(
+                cmdBuf,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                graphicsPipeline->pipelineLayout,
+                0, 1, &(uniformData->descriptorSets[i]),
+                0, nullptr);
 
         // actual drawing command :)
         // vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
@@ -507,6 +528,8 @@ void Window::drawFrame()
     // reset here, as inFlightFence could be the same as imgIdxFence, in which case
     // we would have resetted /before/ waiting for fence again, which causes
     // an infinite wait (as there's nothing to render and /signal/ the fence).
+
+    setUniforms((*uniformData)[imgIndex].first);
     vkResetFences(logicalDev, 1, &inFlightFence);
     CHECK_VK_SUCCESS(
             vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence),
@@ -546,14 +569,23 @@ void Window::resetSwapChain()
 
     vkDeviceWaitIdle(logicalDev);
 
+    graphicsPipeline.reset();
+    uniformData.reset();
     swapchainComponent.reset();
+
     swapchainComponent = std::make_unique<SwapchainComponents>(
             &logicalDev, dev,
             surface, std::make_pair(this->width, this->height));
+
+    uniformData = std::make_unique<SwapchainImageBuffers>(
+            &logicalDev, dev, *swapchainComponent, 0
+    );
+
     graphicsPipeline = std::make_unique<GraphicsPipeline>(
             &logicalDev, dev, &cmdPool, surface,
             "main.vert.spv", "main.frag.spv",
-            *swapchainComponent);
+            *swapchainComponent,
+            std::vector<VkDescriptorSetLayout> {uniformData->descriptorSetLayout});
 
     recordCommands();
 }
@@ -631,4 +663,31 @@ void Window::initBuffers()
     dcb.finish();
     CHECK_VK_SUCCESS(dcb.submit(transferQueue), ErrorMessages::FAILED_CANNOT_SUBMIT_QUEUE);
     CHECK_VK_SUCCESS(vkQueueWaitIdle(transferQueue), ErrorMessages::FAILED_WAIT_IDLE);
+}
+
+void Window::setUniforms(UniformObjBuffer<UniformObjects>& bufObject)
+{
+    glm::vec3 Zup(0,0,1);
+    glm::vec3 Xup(1,0,0);
+    glm::vec3 O(0,0,0);
+
+    UniformObjects ubo = {};
+    auto model = glm::rotate(glm::mat4(1.f), totalTime / 2500.0f, Zup);
+    auto view = glm::lookAt(
+            glm::vec3(0, 0, 2.f),
+            O,
+            Xup);
+    auto proj = glm::perspective(
+            glm::radians(60.f),
+            static_cast<float>(width) / static_cast<float>(height),
+            0.1f, 100.f);
+
+    ubo.MVP = proj * view * model;
+
+    CHECK_VK_SUCCESS(bufObject.loadData(ubo, 0), "Cannot set uniforms!");
+}
+
+void Window::updateFrame(float const& deltaTime)
+{
+    totalTime += deltaTime;
 }

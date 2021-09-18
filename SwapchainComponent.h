@@ -20,6 +20,8 @@ public:
     VkRenderPass renderPass = VK_NULL_HANDLE;
     SwapChainsDetail detail;
 
+    VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
+
     SwapchainComponents() = default;
 
     SwapchainComponents(
@@ -37,6 +39,7 @@ public:
 
     ~SwapchainComponents();
 
+    [[nodiscard]]
     uint32_t imageCount() const;
 
 protected:
@@ -46,6 +49,7 @@ protected:
             VkSurfaceKHR const& surface);
 
     VkResult createRenderPasses();
+    VkResult createDescriptorPool();
 
 private:
     VkDevice* logicalDev=nullptr;

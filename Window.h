@@ -8,6 +8,7 @@
 #include "Vertex.h"
 #include "Buffers.h"
 #include "VertexBuffers.h"
+#include "SwapchainImgBuffers.h"
 
 std::vector<char const*> getRequiredExts();
 bool deviceSuitable(VkPhysicalDevice const& dev);
@@ -38,12 +39,15 @@ protected:
     VkResult createSurface();
     VkResult createCommandPool();
     VkResult createTransferCmdPool();
+    VkResult createDescriptorSetLayout();
 
     void recordCommands();
     void drawFrame();
     void resetSwapChain();
 
     void initBuffers();
+    void setUniforms(UniformObjBuffer<UniformObjects>& bufObject);
+    virtual void updateFrame(float const& deltaTime);
 
     // vk extension functions
     template<typename TPtrExt, typename ...T_args>
@@ -107,11 +111,16 @@ private:
     std::unique_ptr<SwapchainComponents> swapchainComponent;
     VkCommandPool cmdPool = VK_NULL_HANDLE;
     VkCommandPool cmdTransferPool = VK_NULL_HANDLE;
+
+    std::unique_ptr<SwapchainImageBuffers> uniformData;
     std::unique_ptr<GraphicsPipeline> graphicsPipeline;
 
+    // buffers
     std::unique_ptr<Buffers::VertexBuffer<Vertex>> vertexBuffer;
     std::unique_ptr<Buffers::IndexBuffer> idxBuffer;
 
     std::vector<FrameSemaphores> frameSemaphores;
     size_t currentFrame = 0;
+
+    float totalTime = 0;
 };

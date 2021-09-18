@@ -30,4 +30,6 @@ namespace ErrorMessages
     CHAR_CONSTEXPR CREATE_COMMAND_POOL_FAILED = "Cannot create command pool!";
     CHAR_CONSTEXPR CREATE_COMMAND_BUFFERS_FAILED = "Cannot create command buffers!";
 
+    CHAR_CONSTEXPR FAILED_CANNOT_CREATE_DESC_POOL = "Cannot create Descriptor pool!";
+
 }

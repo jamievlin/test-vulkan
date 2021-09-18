@@ -12,6 +12,7 @@ struct PixelShaderOutput
     float4 fragColor : SV_TARGET;
 };
 
+
 PixelShaderOutput main(PixelShaderInput psi)
 {
     PixelShaderOutput pso;

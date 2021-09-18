@@ -3,14 +3,12 @@
 //
 
 #include "GraphicsPipeline.h"
-#include "Vertex.h"
 
-constexpr char const* CREATE_GRAPHICS_PIPELINE_FAILED = "Cannot create graphics pipeline!";
-constexpr char const* CREATE_COMMAND_POOL_FAILED = "Cannot create command pool!";
-constexpr char const* CREATE_COMMAND_BUFFERS_FAILED = "Cannot create command buffers!";
-
-VkResult GraphicsPipeline::createGraphicsPipeline(std::string const& vertShaderName, std::string const& fragShaderName,
-                                                  SwapchainComponents const& swapChain)
+VkResult GraphicsPipeline::createGraphicsPipeline(
+        std::string const& vertShaderName,
+        std::string const& fragShaderName,
+        SwapchainComponents const& swapChain,
+        std::vector<VkDescriptorSetLayout> const& descriptorSetLayout)
 {
     auto [vertShader, ret] = Shaders::createShaderModule(*logicalDev, vertShaderName);
     auto [fragShader, ret2] = Shaders::createShaderModule(*logicalDev, fragShaderName);
@@ -73,7 +71,7 @@ VkResult GraphicsPipeline::createGraphicsPipeline(std::string const& vertShaderN
     rasterizerCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizerCreateInfo.lineWidth = 1.0f;
     rasterizerCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizerCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterizerCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizerCreateInfo.depthBiasEnable = VK_FALSE;
 
     rasterizerCreateInfo.depthBiasConstantFactor = 0.0f;
@@ -118,17 +116,13 @@ VkResult GraphicsPipeline::createGraphicsPipeline(std::string const& vertShaderN
 
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
     pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.setLayoutCount = 0;
-    pipelineLayoutCreateInfo.pSetLayouts = nullptr;
+    pipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayout.size());
+    pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayout.data();
     pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
     pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
-    if (vkCreatePipelineLayout(
-            *logicalDev, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout)
-        != VK_SUCCESS)
-    {
-        throw std::runtime_error("Cannot create pipeline layout!");
-    }
+    CHECK_VK_SUCCESS(vkCreatePipelineLayout(*logicalDev, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout),
+                     "Cannot create pipeline layout!");
 
     VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
     pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -166,7 +160,8 @@ GraphicsPipeline::GraphicsPipeline(
         VkSurfaceKHR const& surface,
         std::string const& vertShader,
         std::string const& fragShader,
-        SwapchainComponents const& swapChain) :
+        SwapchainComponents const& swapChain,
+        std::vector<VkDescriptorSetLayout> const& descriptorSetLayout) :
         logicalDev(device), cmdPool(cmdPool)
 {
     CHECK_VK_SUCCESS(
@@ -223,10 +218,7 @@ GraphicsPipeline::~GraphicsPipeline()
                              cmdBuffers.data());
         vkDestroyPipeline(*logicalDev, pipeline, nullptr);
         vkDestroyPipelineLayout(*logicalDev, pipelineLayout, nullptr);
-
-        cmdBuffers.clear();
         pipeline = VK_NULL_HANDLE;
         pipelineLayout = VK_NULL_HANDLE;
     }
 }
-

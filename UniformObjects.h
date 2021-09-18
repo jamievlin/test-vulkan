@@ -6,24 +6,16 @@
 #include "common.h"
 #include "Buffers.h"
 
-#if defined(USE_HLSL)
-#define HLSL_TRANSPOSE(m) glm::transpose(m)
-#else
-#define HLSL_TRANSPOSE(m) (m)
-#endif
-
 struct UniformObjects
 {
-    glm::mat4 proj;
-    glm::mat4 view;
-    glm::mat4 model;
+    glm::mat4 MVP;
 
     static VkDescriptorSetLayoutBinding descriptorSetLayout(uint32_t binding=0)
     {
         VkDescriptorSetLayoutBinding uboLayout = {};
         uboLayout.binding = binding;
         uboLayout.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        uboLayout.descriptorCount = 3;
+        uboLayout.descriptorCount = 1;
         uboLayout.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         uboLayout.pImmutableSamplers = nullptr;
 
