@@ -18,14 +18,16 @@ struct PixelShaderInput
 [[vk::binding(0,0)]]
 cbuffer UBO
 {
-    float4x4 MVP;
-}
+    float4x4 proj;
+    float4x4 view;
+    float4x4 model;
+};
 
 
 PixelShaderInput main(VertexInput vi)
 {
     PixelShaderInput psi;
-    psi.position = float4(vi.inPosition,0,1) * MVP;
+    psi.position = float4(vi.inPosition,0,1) * model * view * proj;
     psi.inColor = vi.inColor;
     return psi;
 }

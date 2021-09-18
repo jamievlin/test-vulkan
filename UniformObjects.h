@@ -8,7 +8,9 @@
 
 struct UniformObjects
 {
-    glm::mat4 MVP;
+    glm::mat4 proj;
+    glm::mat4 view;
+    glm::mat4 model;
 
     static VkDescriptorSetLayoutBinding descriptorSetLayout(uint32_t binding=0)
     {

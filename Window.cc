@@ -672,17 +672,15 @@ void Window::setUniforms(UniformObjBuffer<UniformObjects>& bufObject)
     glm::vec3 O(0,0,0);
 
     UniformObjects ubo = {};
-    auto model = glm::rotate(glm::mat4(1.f), totalTime / 2500.0f, Zup);
-    auto view = glm::lookAt(
+    ubo.model = glm::rotate(glm::mat4(1.f), totalTime / 2500.0f, Zup);
+    ubo.view = glm::lookAt(
             glm::vec3(0, 0, 2.f),
             O,
             Xup);
-    auto proj = glm::perspective(
+    ubo.proj = glm::perspective(
             glm::radians(60.f),
             static_cast<float>(width) / static_cast<float>(height),
             0.1f, 100.f);
-
-    ubo.MVP = proj * view * model;
 
     CHECK_VK_SUCCESS(bufObject.loadData(ubo, 0), "Cannot set uniforms!");
 }
