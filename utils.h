@@ -4,6 +4,7 @@
 
 #pragma once
 #include <cstdlib>
+#include <vulkan/vulkan.h>
 #define CREATE_STRUCT_ZERO(T, name) T name; memset(&name,0,sizeof(T));
 
 // from vulkan website

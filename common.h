@@ -13,10 +13,12 @@
 #include <GLFW/glfw3native.h>
 #endif
 
+// glm
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/vec4.hpp>
-#include <glm/mat4x4.hpp>
+#define GLM_FORCE_LEFT_HANDED
+#include <glm/glm.hpp>
+#include <glm/ext.hpp>
 
 #include <iostream>
 #include <algorithm>
@@ -57,3 +59,5 @@ using std::nullopt;
     PRINT_ERR_MSG(msg);                                     \
     throw std::runtime_error(msg);                          \
     }
+
+#define USE_HLSL 1
