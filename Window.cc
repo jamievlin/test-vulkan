@@ -89,8 +89,17 @@ bool deviceSuitable(VkPhysicalDevice const& dev)
     return checkDeviceExtensionSupport(dev) && features.tessellationShader && features.geometryShader;
 }
 
-Window::Window(size_t const& width, size_t const& height, std::string windowTitle) :
-    width(width), height(height), title(std::move(windowTitle))
+Window::Window(
+        size_t const& width,
+        size_t const& height,
+        std::string windowTitle,
+        float const& fov, float const& clipnear, float const& clipfar) :
+    width(width), height(height), title(std::move(windowTitle)),
+    fovDegrees(fov), clipNear(clipnear), clipFar(clipfar),
+    projectMat(glm::perspective(
+            glm::radians(fovDegrees),
+            static_cast<float>(width) / static_cast<float>(height),
+            clipNear, clipFar))
 {
     glfwInit();
 
@@ -596,6 +605,14 @@ void Window::onWindowSizeChange(GLFWwindow* ptr, int width, int height)
     auto* self = reinterpret_cast<Window*>(glfwGetWindowUserPointer(ptr));
     self->width = width;
     self->height = height;
+
+    if (height != 0)
+    {
+        self->projectMat = glm::perspective(
+                glm::radians(self->fovDegrees),
+                static_cast<float>(width) / static_cast<float>(height),
+                self->clipNear, self->clipFar);
+    }
 }
 
 void Window::initCallbacks()
@@ -675,13 +692,10 @@ void Window::setUniforms(UniformObjBuffer<UniformObjects>& bufObject)
     ubo.time = totalTime / 1000.f;
     ubo.model = glm::rotate(glm::mat4(1.f), totalTime / 1000.0f, Zup);
     ubo.view = glm::lookAt(
-            glm::vec3(0, 0, 2.f),
+            glm::vec3(1.f, -1.f, 1.f),
             O,
-            Xup);
-    ubo.proj = glm::perspective(
-            glm::radians(60.f),
-            static_cast<float>(width) / static_cast<float>(height),
-            0.1f, 100.f);
+            glm::vec3(1.f, -1.f, -1.f));
+    ubo.proj = projectMat;
 
     CHECK_VK_SUCCESS(bufObject.loadData(ubo, 0), "Cannot set uniforms!");
 }

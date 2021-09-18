@@ -17,7 +17,11 @@ constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
 class Window
 {
 public:
-    Window(size_t const& width, size_t const& height, std::string windowTitle);
+    Window(
+            size_t const& width,
+            size_t const& height,
+            std::string windowTitle,
+            float const& fov=60.f, float const& clipnear=0.1f, float const& clipfar=100.f);
     virtual ~Window();
 
     Window(Window const& win) = delete;
@@ -39,7 +43,6 @@ protected:
     VkResult createSurface();
     VkResult createCommandPool();
     VkResult createTransferCmdPool();
-    VkResult createDescriptorSetLayout();
 
     void recordCommands();
     void drawFrame();
@@ -95,6 +98,10 @@ protected:
 private:
     size_t width, height;
     std::string title;
+
+    float fovDegrees;
+    float clipNear, clipFar;
+    glm::mat4 projectMat;
 
     GLFWwindow* window = nullptr;
     VkInstance instance = {};

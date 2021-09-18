@@ -125,7 +125,7 @@ public:
 
         createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         createInfo.descriptorPool = swapchainComponent.descriptorPool;
-        createInfo.descriptorSetCount = layouts.size();
+        createInfo.descriptorSetCount = static_cast<uint32_t>(layouts.size());
         createInfo.pSetLayouts = layouts.data();
 
         descriptorSets.resize(imgSize);
