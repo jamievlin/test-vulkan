@@ -45,8 +45,15 @@ list(APPEND INCLUDE_DIRS ${Vulkan_INCLUDE_DIRS})
 set(LIBRARIES ${Vulkan_LIBRARIES} glfw)
 
 # Shader compilation
-file(GLOB SHADERS **/*.glsl)
-set(GLSLC_FLAGS -O -Werror)
+file(GLOB SHADERS **/*.hlsl **/*.glsl)
+set(GLSLC_FLAGS -Werror)
+
+if (${CMAKE_BUILD_TYPE} MATCHES Debug)
+    list(APPEND GLSLC_FLAGS -g -O0)
+elseif (${CMAKE_BUILD_TYPE} MATCHES Release)
+    list(APPEND GLSLC_FLAGS -O)
+endif()
+
 set(GLSLC_TARGETS --target-spv=spv1.5 --target-env=vulkan1.2)
 
 foreach(shaderFile IN LISTS SHADERS)
