@@ -37,6 +37,8 @@ public:
 
     ~SwapchainComponents();
 
+    uint32_t imageCount() const;
+
 protected:
     VkResult initSwapChain(
             VkPhysicalDevice const& physDevice,

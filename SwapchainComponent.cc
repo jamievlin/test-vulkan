@@ -184,3 +184,8 @@ SwapchainComponents::~SwapchainComponents()
         vkDestroySwapchainKHR(*logicalDev, swapChain, nullptr);
     }
 }
+
+uint32_t SwapchainComponents::imageCount() const
+{
+    return static_cast<uint32_t>(swapChainImages.size());
+}
