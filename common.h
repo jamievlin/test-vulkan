@@ -30,6 +30,7 @@
 #include <set>
 #include <optional>
 #include <string>
+#include <cstring>
 
 
 using std::optional;
