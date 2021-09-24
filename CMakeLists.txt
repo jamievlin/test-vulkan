@@ -26,10 +26,11 @@ else()
     string(APPEND CMAKE_CXX_FLAGS " -Wall")
 endif (WIN32)
 
-file(GLOB SOURCES "*.cc")
-file(GLOB HEADERS "*.h")
+file(GLOB SOURCES "src/*.cc")
+file(GLOB HEADERS "include/*.h")
 add_executable(vkTest ${SOURCES} ${HEADERS})
 
+list(APPEND INCLUDE_DIRS include/)
 # For vulkan validation layers
 if (ENABLE_VALIDATION_LAYERS)
     list(APPEND COMPILE_DEFINITIONS ENABLE_VALIDATION_LAYERS)
