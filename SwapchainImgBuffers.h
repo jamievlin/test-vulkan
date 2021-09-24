@@ -31,6 +31,7 @@ public:
         unifBuffers(std::move(sib.unifBuffers)),
         descriptorSets(std::move(sib.descriptorSets)),
         logicalDev(sib.logicalDev),
+        allocator(sib.allocator),
         imgSize(sib.imgSize)
     {
 
@@ -45,6 +46,7 @@ public:
         unifBuffers = std::move(sib.unifBuffers);
         descriptorSets = std::move(sib.descriptorSets);
         logicalDev = sib.logicalDev;
+        allocator = sib.allocator;
         imgSize = sib.imgSize;
         sib.logicalDev = nullptr;
 
@@ -57,10 +59,11 @@ public:
 
     SwapchainImageBuffers(
             VkDevice* logicalDev,
+            VmaAllocator* allocator,
             VkPhysicalDevice const& physDev,
             SwapchainComponents const& swapchainComponent,
             uint32_t const& binding) :
-            logicalDev(logicalDev), imgSize(swapchainComponent.imageCount())
+            logicalDev(logicalDev), allocator(allocator), imgSize(swapchainComponent.imageCount())
     {
         CHECK_VK_SUCCESS(createDescriptorSetLayout(), "Cannot create descriptor set layout!");
         createUniformBuffers(physDev, swapchainComponent);
@@ -74,7 +77,7 @@ public:
         for (uint32_t i=0; i < imgSize; ++i)
         {
             unifBuffers.emplace_back(
-                    logicalDev, physDev,
+                    logicalDev, allocator, physDev,
                     nullopt, 0,
                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         }
@@ -144,5 +147,6 @@ public:
 
 private:
     VkDevice* logicalDev=nullptr;
+    VmaAllocator* allocator=nullptr;
     uint32_t imgSize=0;
 };

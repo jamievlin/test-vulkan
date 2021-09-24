@@ -27,31 +27,32 @@ namespace Buffers
         throw std::runtime_error("Cannot find suitable memory type!");
     }
 
-    Buffer::Buffer(VkDevice* dev, VkPhysicalDevice const& physicalDev, size_t const& bufferSize,
+    Buffer::Buffer(VkDevice* dev, VmaAllocator* allocator,
+                   VkPhysicalDevice const& physicalDev, size_t const& bufferSize,
                    VkBufferUsageFlags const& bufferUsageFlags,
+                   VmaMemoryUsage const& memoryUsage,
                    VkMemoryPropertyFlags const& memoryFlags,
                    optUint32Set const& usedQueues
-                   ) : logicalDev(dev), size(bufferSize)
+                   ) : logicalDev(dev), allocator(allocator), size(bufferSize)
     {
         if (usedQueues.has_value() and usedQueues.value().size() > 1)
         {
             CHECK_VK_SUCCESS(createVertexBufferConcurrent(
                     bufferUsageFlags,
+                    memoryUsage,
+                    memoryFlags,
                     usedQueues.value()), "Cannot create buffer!");
         }
         else
         {
-            CHECK_VK_SUCCESS(createVertexBuffer(bufferUsageFlags), "Cannot create buffer!");
+            CHECK_VK_SUCCESS(createVertexBuffer(bufferUsageFlags, memoryUsage, memoryFlags), "Cannot create buffer!");
         }
-        CHECK_VK_SUCCESS(allocateMemory(physicalDev, memoryFlags), "Cannot allocate device memory!");
-
-        CHECK_VK_SUCCESS(vkBindBufferMemory(*getLogicalDev(), vertexBuffer, deviceMemory, 0),
-                         "Cannot bind buffer!");
     }
 
     Buffer::Buffer(Buffer&& buf) noexcept:
-            logicalDev(std::move(buf.logicalDev)), size(std::move(buf.size)),
-            vertexBuffer(std::move(buf.vertexBuffer)), deviceMemory(std::move(buf.deviceMemory))
+            logicalDev(std::move(buf.logicalDev)), allocator(std::move(buf.allocator)),
+            size(std::move(buf.size)),
+            vertexBuffer(std::move(buf.vertexBuffer)), allocation(std::move(buf.allocation))
     {
         buf.logicalDev = nullptr;
     }
@@ -59,9 +60,10 @@ namespace Buffers
     Buffer& Buffer::operator=(Buffer&& buf) noexcept
     {
         logicalDev = std::move(buf.logicalDev);
+        allocator = std::move(buf.allocator);
         size = std::move(buf.size);
         vertexBuffer = std::move(buf.vertexBuffer);
-        deviceMemory = std::move(buf.deviceMemory);
+        allocation = std::move(buf.allocation);
 
         buf.logicalDev = nullptr;
         return *this;
@@ -71,8 +73,7 @@ namespace Buffers
     {
         if (isInitialized())
         {
-            vkFreeMemory(*logicalDev, deviceMemory, nullptr);
-            vkDestroyBuffer(*logicalDev, vertexBuffer, nullptr);
+            vmaDestroyBuffer(*allocator, vertexBuffer, allocation);
         }
     }
 
@@ -91,7 +92,10 @@ namespace Buffers
         return static_cast<uint32_t>(size);
     }
 
-    VkResult Buffer::createVertexBuffer(VkBufferUsageFlags const& bufferUsageFlags)
+    VkResult Buffer::createVertexBuffer(
+            VkBufferUsageFlags const& bufferUsageFlags,
+            VmaMemoryUsage const& memoryUsage,
+            VkMemoryPropertyFlags const& memoryFlags)
     {
         VkBufferCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -101,11 +105,17 @@ namespace Buffers
         createInfo.queueFamilyIndexCount = 0;
         createInfo.pQueueFamilyIndices = nullptr;
 
-        return vkCreateBuffer(*logicalDev, &createInfo, nullptr, &vertexBuffer);
+        VmaAllocationCreateInfo allocInfo = {};
+        allocInfo.usage = memoryUsage;
+        allocInfo.requiredFlags = memoryFlags;
+
+        return vmaCreateBuffer(*allocator, &createInfo, &allocInfo, &vertexBuffer, &allocation, nullptr);
     }
 
     VkResult Buffer::createVertexBufferConcurrent(
             VkBufferUsageFlags const& bufferUsageFlags,
+            VmaMemoryUsage const& memoryUsage,
+            VkMemoryPropertyFlags const& memoryFlags,
             std::set<uint32_t> const& queues)
     {
         VkBufferCreateInfo createInfo = {};
@@ -120,20 +130,11 @@ namespace Buffers
         queueVec.assign(queues.begin(), queues.end());
         createInfo.pQueueFamilyIndices = queueVec.data();
 
-        return vkCreateBuffer(*logicalDev, &createInfo, nullptr, &vertexBuffer);
-    }
+        VmaAllocationCreateInfo allocInfo = {};
+        allocInfo.usage = memoryUsage;
+        allocInfo.requiredFlags = memoryFlags;
 
-    VkResult Buffer::allocateMemory(VkPhysicalDevice const& physicalDev, VkMemoryPropertyFlags const& memoryFlags)
-    {
-        VkMemoryRequirements memReq = {};
-        vkGetBufferMemoryRequirements(*logicalDev, vertexBuffer, &memReq);
-
-        VkMemoryAllocateInfo allocateInfo = {};
-        allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocateInfo.allocationSize = memReq.size;
-        allocateInfo.memoryTypeIndex = getMemoryType(physicalDev, memoryFlags, memReq.memoryTypeBits);
-
-        return vkAllocateMemory(*logicalDev, &allocateInfo, nullptr, &deviceMemory);
+        return vmaCreateBuffer(*allocator, &createInfo, &allocInfo, &vertexBuffer, &allocation, nullptr);
     }
 
     VkDevice* Buffer::getLogicalDev()
@@ -144,11 +145,11 @@ namespace Buffers
     VkResult Buffer::loadData(void const* data, VkDeviceSize const& offset)
     {
         void* inSrc = nullptr;
-        auto ret = vkMapMemory(*logicalDev, deviceMemory, offset, size, 0, &inSrc);
+        auto ret = vmaMapMemory(*allocator, allocation, &inSrc);
         if (ret == VK_SUCCESS)
         {
             memcpy(inSrc, data, size);
-            vkUnmapMemory(*getLogicalDev(), deviceMemory);
+            vmaUnmapMemory(*allocator, allocation);
         }
         return ret;
     }

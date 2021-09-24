@@ -17,12 +17,15 @@ namespace Buffers
     {
     public:
         VkBuffer vertexBuffer = VK_NULL_HANDLE;
-        VkDeviceMemory deviceMemory = VK_NULL_HANDLE;
+        VmaAllocation allocation = VK_NULL_HANDLE;
 
         Buffer() = default;
         Buffer(
-                VkDevice* dev, VkPhysicalDevice const& physicalDev, size_t const& bufferSize,
+                VkDevice* dev,
+                VmaAllocator* allocator,
+                VkPhysicalDevice const& physicalDev, size_t const& bufferSize,
                 VkBufferUsageFlags const& bufferUsageFlags,
+                VmaMemoryUsage const& memoryUsage,
                 VkMemoryPropertyFlags const& memoryFlags,
                 optUint32Set const& usedQueues = nullopt);
 
@@ -49,17 +52,22 @@ namespace Buffers
         void cmdCopyDataFrom(Buffer const& src, VkCommandBuffer& transferBuffer) const;
 
     protected:
-        VkResult createVertexBuffer(VkBufferUsageFlags const& bufferUsageFlags);
+        VkResult createVertexBuffer(
+                VkBufferUsageFlags const& bufferUsageFlags,
+                VmaMemoryUsage const& memoryUsage,
+                VkMemoryPropertyFlags const& memoryFlags);
         VkResult createVertexBufferConcurrent(
                 VkBufferUsageFlags const& bufferUsageFlags,
+                VmaMemoryUsage const& memoryUsage,
+                VkMemoryPropertyFlags const& memoryFlags,
                 std::set<uint32_t> const& queues);
-        VkResult allocateMemory(VkPhysicalDevice const& physicalDev, VkMemoryPropertyFlags const& memoryFlags);
 
         [[nodiscard]]
         VkDevice* getLogicalDev();
 
     private:
         VkDevice* logicalDev = nullptr;
+        VmaAllocator* allocator = nullptr;
         size_t size = -1;
     };
 } // namespace buffers

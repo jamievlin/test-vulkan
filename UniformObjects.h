@@ -43,13 +43,15 @@ struct UniformObjBuffer : Buffers::Buffer
 
     UniformObjBuffer(
             VkDevice* dev,
+            VmaAllocator* allocator,
             VkPhysicalDevice const& physicalDev,
             Buffers::optUint32Set const& usedQueues = nullopt,
             VkFlags const& additionalFlags = 0,
             VkMemoryPropertyFlags const& memoryFlags = 0
 
-    ) : Buffer(dev, physicalDev, sizeof(TUniformBuffer),
+    ) : Buffer(dev, allocator, physicalDev, sizeof(TUniformBuffer),
                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | additionalFlags,
+               VMA_MEMORY_USAGE_CPU_TO_GPU,
                memoryFlags, usedQueues)
     {
     }

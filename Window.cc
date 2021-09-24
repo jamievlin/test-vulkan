@@ -123,6 +123,10 @@ Window::Window(
 
     // end selection of logical device
 
+    // create allocator
+    CHECK_VK_SUCCESS(createAllocator(), ErrorMessages::FAILED_CANNOT_CREATE_ALLOCATOR)
+    //
+
     swapchainComponent = std::make_unique<SwapchainComponents>(
             &logicalDev, dev,
             surface, std::make_pair(this->width, this->height));
@@ -131,7 +135,7 @@ Window::Window(
     CHECK_VK_SUCCESS(createTransferCmdPool(), "Cannot create transfer command pool!");
 
     uniformData = std::make_unique<SwapchainImageBuffers>(
-            &logicalDev, dev, *swapchainComponent, 0
+            &logicalDev, &allocator, dev, *swapchainComponent, 0
             );
 
     graphicsPipeline = std::make_unique<GraphicsPipeline>(
@@ -212,6 +216,7 @@ Window::~Window()
     vkDestroyCommandPool(logicalDev, cmdTransferPool, nullptr);
     vkDestroyCommandPool(logicalDev, cmdPool, nullptr);
 
+    vmaDestroyAllocator(allocator);
 #if ENABLE_VALIDATION_LAYERS == 1
     auto destroyFn = getVkExtensionVoid<
             PFN_vkDestroyDebugUtilsMessengerEXT,
@@ -587,7 +592,7 @@ void Window::resetSwapChain()
             surface, std::make_pair(this->width, this->height));
 
     uniformData = std::make_unique<SwapchainImageBuffers>(
-            &logicalDev, dev, *swapchainComponent, 0
+            &logicalDev, &allocator, dev, *swapchainComponent, 0
     );
 
     graphicsPipeline = std::make_unique<GraphicsPipeline>(
@@ -644,29 +649,31 @@ VkResult Window::createTransferCmdPool()
 void Window::initBuffers()
 {
     Buffers::Buffer stagingBuffer(
-            &logicalDev, dev, verts.size() * sizeof(Vertex),
+            &logicalDev, &allocator, dev, verts.size() * sizeof(Vertex),
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VMA_MEMORY_USAGE_CPU_TO_GPU,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             queueFamilyIndex.queuesForTransfer());
 
     stagingBuffer.loadData(verts.data());
 
     vertexBuffer = std::make_unique<Buffers::VertexBuffer<Vertex>>(
-            &logicalDev, dev, verts.size(),
+            &logicalDev, &allocator, dev, verts.size(),
             queueFamilyIndex.queuesForTransfer(),
             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     Buffers::Buffer stagingBufferIdx(
-            &logicalDev, dev, idx.size() * sizeof(uint32_t),
+            &logicalDev, &allocator, dev, idx.size() * sizeof(uint32_t),
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VMA_MEMORY_USAGE_CPU_TO_GPU,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             queueFamilyIndex.queuesForTransfer());
 
     stagingBufferIdx.loadData(idx.data());
 
     idxBuffer = std::make_unique<Buffers::IndexBuffer>(
-            &logicalDev, dev, idx.size(),
+            &logicalDev, &allocator, dev, idx.size(),
             queueFamilyIndex.queuesForTransfer(),
             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -703,4 +710,15 @@ void Window::setUniforms(UniformObjBuffer<UniformObjects>& bufObject)
 void Window::updateFrame(float const& deltaTime)
 {
     totalTime += deltaTime;
+}
+
+VkResult Window::createAllocator()
+{
+    VmaAllocatorCreateInfo createInfo = {};
+    createInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+    createInfo.physicalDevice = dev;
+    createInfo.device = logicalDev;
+    createInfo.instance = instance;
+
+    return vmaCreateAllocator(&createInfo, &allocator);
 }

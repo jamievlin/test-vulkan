@@ -12,7 +12,7 @@
 
 std::vector<char const*> getRequiredExts();
 bool deviceSuitable(VkPhysicalDevice const& dev);
-constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
+constexpr size_t MAX_FRAMES_IN_FLIGHT = 3;
 
 class Window
 {
@@ -47,6 +47,9 @@ protected:
     void recordCommands();
     void drawFrame();
     void resetSwapChain();
+
+    VkResult createAllocator();
+
 
     void initBuffers();
     void setUniforms(UniformObjBuffer<UniformObjects>& bufObject);
@@ -107,6 +110,8 @@ private:
     VkInstance instance = {};
     VkPhysicalDevice dev = {};
     VkDevice logicalDev = {};
+
+    VmaAllocator allocator = VK_NULL_HANDLE;
 
     QueueFamilies queueFamilyIndex;
     VkQueue graphicsQueue = {};
