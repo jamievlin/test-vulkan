@@ -34,6 +34,8 @@
 #include <string>
 #include <cstring>
 
+#include <vk_mem_alloc.h>
+
 
 using std::optional;
 using std::nullopt;

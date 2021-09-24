@@ -35,9 +35,13 @@ if (ENABLE_VALIDATION_LAYERS)
     list(APPEND COMPILE_DEFINITIONS ENABLE_VALIDATION_LAYERS)
 endif(ENABLE_VALIDATION_LAYERS)
 
-set(INCLUDE_DIRS ${GLM_PATH})
-find_path(GLM_PATH glm/glm.hpp)
 
+find_path(GLM_PATH glm/glm.hpp)
+list(APPEND INCLUDE_DIRS ${GLM_PATH})
+
+if (WIN32)
+    find_package(unofficial-vulkan-memory-allocator REQUIRED)
+endif()
 find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
 
