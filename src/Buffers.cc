@@ -123,7 +123,6 @@ namespace Buffers
         createInfo.size = size;
         createInfo.usage = bufferUsageFlags;
         createInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
-
         createInfo.queueFamilyIndexCount = static_cast<uint32_t>(queues.size());
 
         std::vector<uint32_t> queueVec(queues.size());
@@ -142,7 +141,7 @@ namespace Buffers
         return logicalDev;
     }
 
-    VkResult Buffer::loadData(void const* data, VkDeviceSize const& offset)
+    VkResult Buffer::loadData(void const* data)
     {
         void* inSrc = nullptr;
         auto ret = vmaMapMemory(*allocator, allocation, &inSrc);
@@ -212,4 +211,21 @@ namespace Buffers
         cmdCopyDataFrom(src.vertexBuffer, transferBuffer);
     }
 
+    StagingBuffer::StagingBuffer(VkDevice* dev, VmaAllocator* allocator, VkPhysicalDevice const& physicalDev,
+                                 size_t const& bufferSize, VkMemoryPropertyFlags const& memoryFlags,
+                                 optUint32Set const& usedQueues) :
+            Buffer(dev, allocator, physicalDev, bufferSize,
+                   VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                   VMA_MEMORY_USAGE_CPU_TO_GPU,
+                   memoryFlags, usedQueues)
+    {
+    }
+
+    StagingBuffer& StagingBuffer::operator=(StagingBuffer&& buf) noexcept
+    {
+        Buffer::operator=(std::move(buf));
+        return *this;
+    }
+
+    StagingBuffer::StagingBuffer(StagingBuffer&& buf) noexcept: Buffer(std::move(buf)) {}
 } // namespace Buffers

@@ -44,7 +44,7 @@ namespace Buffers
         [[nodiscard]]
         uint32_t getSize() const;
 
-        VkResult loadData(void const* data, VkDeviceSize const& offset = 0);
+        VkResult loadData(void const* data);
         void copyDataFrom(VkBuffer const& src, VkQueue& transferQueue, VkCommandPool& transferCmdPool) const;
         void cmdCopyDataFrom(VkBuffer const& src, VkCommandBuffer& transferBuffer) const;
 
@@ -69,5 +69,23 @@ namespace Buffers
         VkDevice* logicalDev = nullptr;
         VmaAllocator* allocator = nullptr;
         size_t size = -1;
+    };
+
+    class StagingBuffer : public Buffer
+    {
+    public:
+        StagingBuffer() = default;
+        StagingBuffer(
+                VkDevice* dev,
+                VmaAllocator* allocator,
+                VkPhysicalDevice const& physicalDev, size_t const& bufferSize,
+                VkMemoryPropertyFlags const& memoryFlags,
+                optUint32Set const& usedQueues);
+
+        StagingBuffer(StagingBuffer const&) = delete;
+        StagingBuffer& operator= (StagingBuffer const&) = delete;
+
+        StagingBuffer(StagingBuffer&& buf) noexcept;
+        StagingBuffer& operator=(StagingBuffer&& buf) noexcept;
     };
 } // namespace buffers
