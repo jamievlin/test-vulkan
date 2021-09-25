@@ -8,7 +8,7 @@
 #include "SwapChains.h"
 #include "SwapchainSupport.h"
 
-class SwapchainComponents
+class SwapchainComponents : public AVkGraphicsBase
 {
 public:
     VkSwapchainKHR swapChain = VK_NULL_HANDLE;
@@ -50,8 +50,4 @@ protected:
 
     VkResult createRenderPasses();
     VkResult createDescriptorPool();
-
-private:
-    VkDevice* logicalDev=nullptr;
-
 };

@@ -33,7 +33,7 @@ namespace Buffers
                    VmaMemoryUsage const& memoryUsage,
                    VkMemoryPropertyFlags const& memoryFlags,
                    optUint32Set const& usedQueues
-                   ) : logicalDev(dev), allocator(allocator), size(bufferSize)
+                   ) : AVkGraphicsBase(dev), allocator(allocator), size(bufferSize)
     {
         if (usedQueues.has_value() and usedQueues.value().size() > 1)
         {
@@ -50,41 +50,30 @@ namespace Buffers
     }
 
     Buffer::Buffer(Buffer&& buf) noexcept:
-            logicalDev(std::move(buf.logicalDev)), allocator(std::move(buf.allocator)),
+            AVkGraphicsBase(std::move(buf)), allocator(std::move(buf.allocator)),
             size(std::move(buf.size)),
             vertexBuffer(std::move(buf.vertexBuffer)), allocation(std::move(buf.allocation))
     {
-        buf.logicalDev = nullptr;
     }
 
     Buffer& Buffer::operator=(Buffer&& buf) noexcept
     {
-        logicalDev = std::move(buf.logicalDev);
+        AVkGraphicsBase::operator=(std::move(buf));
+
         allocator = std::move(buf.allocator);
         size = std::move(buf.size);
         vertexBuffer = std::move(buf.vertexBuffer);
         allocation = std::move(buf.allocation);
 
-        buf.logicalDev = nullptr;
         return *this;
     }
 
     Buffer::~Buffer()
     {
-        if (isInitialized())
+        if (initialized())
         {
             vmaDestroyBuffer(*allocator, vertexBuffer, allocation);
         }
-    }
-
-    Buffer::operator bool() const
-    {
-        return isInitialized();
-    }
-
-    bool Buffer::isInitialized() const
-    {
-        return logicalDev != nullptr;
     }
 
     uint32_t Buffer::getSize() const
@@ -136,11 +125,6 @@ namespace Buffers
         return vmaCreateBuffer(*allocator, &createInfo, &allocInfo, &vertexBuffer, &allocation, nullptr);
     }
 
-    VkDevice* Buffer::getLogicalDev()
-    {
-        return logicalDev;
-    }
-
     VkResult Buffer::loadData(void const* data)
     {
         void* inSrc = nullptr;
@@ -175,7 +159,7 @@ namespace Buffers
         allocateInfo.commandBufferCount = 1;
 
         VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
-        CHECK_VK_SUCCESS(vkAllocateCommandBuffers(*logicalDev, &allocateInfo, &cmdBuffer),
+        CHECK_VK_SUCCESS(vkAllocateCommandBuffers(getLogicalDev(), &allocateInfo, &cmdBuffer),
                          ErrorMessages::FAILED_CANNOT_CREATE_CMD_BUFFER);
 
         VkCommandBufferBeginInfo beginInfo = {};
@@ -198,7 +182,7 @@ namespace Buffers
                          ErrorMessages::FAILED_CANNOT_SUBMIT_QUEUE);
 
         CHECK_VK_SUCCESS(vkQueueWaitIdle(transferQueue), ErrorMessages::FAILED_WAIT_IDLE);
-        vkFreeCommandBuffers(*logicalDev, transferCmdPool, 1, &cmdBuffer);
+        vkFreeCommandBuffers(getLogicalDev(), transferCmdPool, 1, &cmdBuffer);
     }
 
     void Buffer::copyDataFrom(Buffer const& src, VkQueue& transferQueue, VkCommandPool& transferCmdPool) const

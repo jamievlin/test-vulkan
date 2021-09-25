@@ -5,7 +5,7 @@
 #pragma once
 #include "common.h"
 
-class FrameSemaphores
+class FrameSemaphores : public AVkGraphicsBase
 {
 public:
     VkSemaphore imgAvailable = VK_NULL_HANDLE;
@@ -24,7 +24,4 @@ public:
     FrameSemaphores& operator= (FrameSemaphores&& frameSem) noexcept;
 
     ~FrameSemaphores();
-
-private:
-    VkDevice* logicalDev;
 };

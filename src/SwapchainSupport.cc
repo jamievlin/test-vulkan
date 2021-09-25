@@ -23,7 +23,7 @@ VkResult SwapchainImageSupport::createImageView(VkImage const& swapChainImage, V
     createInfo.subresourceRange.baseArrayLayer = 0;
     createInfo.subresourceRange.layerCount = 1;
 
-    return vkCreateImageView(*logicalDev, &createInfo, nullptr, &imageView);
+    return vkCreateImageView(getLogicalDev(), &createInfo, nullptr, &imageView);
 }
 
 VkResult SwapchainImageSupport::createFramebuffer(VkRenderPass const& renderPass, VkExtent2D const& extent)
@@ -40,17 +40,16 @@ VkResult SwapchainImageSupport::createFramebuffer(VkRenderPass const& renderPass
     createInfo.height = extent.height;
     createInfo.layers = 1;
 
-    return vkCreateFramebuffer(*logicalDev, &createInfo, nullptr, &frameBuffer);
+    return vkCreateFramebuffer(getLogicalDev(), &createInfo, nullptr, &frameBuffer);
 }
 
 SwapchainImageSupport& SwapchainImageSupport::operator=(SwapchainImageSupport&& swpImgSupport) noexcept
 {
-    logicalDev = swpImgSupport.logicalDev;
+    AVkGraphicsBase::operator=(std::move(swpImgSupport));
     imageView = swpImgSupport.imageView;
     frameBuffer = swpImgSupport.frameBuffer;
     imagesInFlight = swpImgSupport.imagesInFlight;
 
-    swpImgSupport.logicalDev = nullptr;
     swpImgSupport.imageView = VK_NULL_HANDLE;
     swpImgSupport.frameBuffer = VK_NULL_HANDLE;
     swpImgSupport.imagesInFlight = VK_NULL_HANDLE;
@@ -59,14 +58,10 @@ SwapchainImageSupport& SwapchainImageSupport::operator=(SwapchainImageSupport&& 
 }
 
 SwapchainImageSupport::SwapchainImageSupport(SwapchainImageSupport&& swpImgSupport) noexcept:
-        logicalDev(swpImgSupport.logicalDev)
+    AVkGraphicsBase(std::move(swpImgSupport)),
+    imageView(std::move(swpImgSupport.imageView)), frameBuffer(std::move(swpImgSupport.frameBuffer)),
+    imagesInFlight(std::move(swpImgSupport.imagesInFlight))
 {
-
-    imageView = swpImgSupport.imageView;
-    frameBuffer = swpImgSupport.frameBuffer;
-    imagesInFlight = swpImgSupport.imagesInFlight;
-
-    swpImgSupport.logicalDev = nullptr;
     swpImgSupport.imageView = VK_NULL_HANDLE;
     swpImgSupport.frameBuffer = VK_NULL_HANDLE;
     swpImgSupport.imagesInFlight = VK_NULL_HANDLE;
@@ -74,7 +69,7 @@ SwapchainImageSupport::SwapchainImageSupport(SwapchainImageSupport&& swpImgSuppo
 
 SwapchainImageSupport::SwapchainImageSupport(VkDevice* logicalDev, VkRenderPass const& renderPass,
                                              VkExtent2D const& extent, VkImage const& swapChainImage,
-                                             VkFormat const& swapchainFormat) : logicalDev(logicalDev)
+                                             VkFormat const& swapchainFormat): AVkGraphicsBase(logicalDev)
 {
 
     CHECK_VK_SUCCESS(
@@ -87,9 +82,9 @@ SwapchainImageSupport::SwapchainImageSupport(VkDevice* logicalDev, VkRenderPass 
 
 SwapchainImageSupport::~SwapchainImageSupport()
 {
-    if (logicalDev)
+    if (initialized())
     {
-        vkDestroyFramebuffer(*logicalDev, frameBuffer, nullptr);
-        vkDestroyImageView(*logicalDev, imageView, nullptr);
+        vkDestroyFramebuffer(getLogicalDev(), frameBuffer, nullptr);
+        vkDestroyImageView(getLogicalDev(), imageView, nullptr);
     }
 }

@@ -5,7 +5,7 @@
 #pragma once
 #include "common.h"
 
-class SwapchainImageSupport
+class SwapchainImageSupport : public AVkGraphicsBase
 {
 public:
     VkImageView imageView = VK_NULL_HANDLE;
@@ -34,7 +34,4 @@ protected:
     VkResult createImageView(
             VkImage const& swapChainImage,
             VkFormat const& swapchainFormat);
-
-private:
-    VkDevice* logicalDev = nullptr;
 };

@@ -25,7 +25,7 @@ void SwapchainImageBuffers::configureBuffers(uint32_t const& binding)
         descriptorWrite.pImageInfo = nullptr;
         descriptorWrite.pTexelBufferView = nullptr;
 
-        vkUpdateDescriptorSets(*logicalDev, 1, &descriptorWrite, 0, nullptr);
+        vkUpdateDescriptorSets(getLogicalDev(), 1, &descriptorWrite, 0, nullptr);
     }
 }
 
@@ -38,7 +38,7 @@ VkResult SwapchainImageBuffers::createDescriptorSetLayout()
     layoutInfo.bindingCount = 1;
     layoutInfo.pBindings = &layout;
 
-    return vkCreateDescriptorSetLayout(*logicalDev, &layoutInfo, nullptr, &descriptorSetLayout);
+    return vkCreateDescriptorSetLayout(getLogicalDev(), &layoutInfo, nullptr, &descriptorSetLayout);
 }
 
 VkResult SwapchainImageBuffers::createDescriptorSets(SwapchainComponents const& swapchainComponent)
@@ -53,7 +53,7 @@ VkResult SwapchainImageBuffers::createDescriptorSets(SwapchainComponents const& 
     createInfo.pSetLayouts = layouts.data();
 
     descriptorSets.resize(imgSize);
-    return vkAllocateDescriptorSets(*logicalDev, &createInfo, descriptorSets.data());
+    return vkAllocateDescriptorSets(getLogicalDev(), &createInfo, descriptorSets.data());
 }
 
 std::pair<UniformObjBuffer<UniformObjects>&, VkDescriptorSet&> SwapchainImageBuffers::operator[](uint32_t const& i)
@@ -67,13 +67,12 @@ std::pair<UniformObjBuffer<UniformObjects>&, VkDescriptorSet&> SwapchainImageBuf
 
 SwapchainImageBuffers& SwapchainImageBuffers::operator=(SwapchainImageBuffers&& sib) noexcept
 {
+    AVkGraphicsBase::operator=(std::move(sib));
     descriptorSetLayout = std::move(sib.descriptorSetLayout);
     unifBuffers = std::move(sib.unifBuffers);
     descriptorSets = std::move(sib.descriptorSets);
-    logicalDev = sib.logicalDev;
     allocator = sib.allocator;
     imgSize = sib.imgSize;
-    sib.logicalDev = nullptr;
 
     sib.unifBuffers.clear();
     sib.descriptorSets.clear();
@@ -82,17 +81,15 @@ SwapchainImageBuffers& SwapchainImageBuffers::operator=(SwapchainImageBuffers&& 
 }
 
 SwapchainImageBuffers::SwapchainImageBuffers(SwapchainImageBuffers&& sib) noexcept:
+        AVkGraphicsBase(std::move(sib)),
         descriptorSetLayout(std::move(sib.descriptorSetLayout)),
         unifBuffers(std::move(sib.unifBuffers)),
         descriptorSets(std::move(sib.descriptorSets)),
-        logicalDev(sib.logicalDev),
         allocator(sib.allocator),
         imgSize(sib.imgSize)
 {
-
     sib.unifBuffers.clear();
     sib.descriptorSets.clear();
-    sib.logicalDev = nullptr;
 }
 
 void SwapchainImageBuffers::createUniformBuffers(VkPhysicalDevice const& physDev,
@@ -101,7 +98,7 @@ void SwapchainImageBuffers::createUniformBuffers(VkPhysicalDevice const& physDev
     for (uint32_t i=0; i < imgSize; ++i)
     {
         unifBuffers.emplace_back(
-                logicalDev, allocator, physDev,
+                getLogicalDevPtr(), allocator, physDev,
                 nullopt, 0,
                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     }
@@ -110,7 +107,7 @@ void SwapchainImageBuffers::createUniformBuffers(VkPhysicalDevice const& physDev
 SwapchainImageBuffers::SwapchainImageBuffers(VkDevice* logicalDev, VmaAllocator* allocator,
                                              VkPhysicalDevice const& physDev,
                                              SwapchainComponents const& swapchainComponent, uint32_t const& binding) :
-        logicalDev(logicalDev), allocator(allocator), imgSize(swapchainComponent.imageCount())
+        AVkGraphicsBase(logicalDev), allocator(allocator), imgSize(swapchainComponent.imageCount())
 {
     CHECK_VK_SUCCESS(createDescriptorSetLayout(), "Cannot create descriptor set layout!");
     createUniformBuffers(physDev, swapchainComponent);
@@ -121,8 +118,8 @@ SwapchainImageBuffers::SwapchainImageBuffers(VkDevice* logicalDev, VmaAllocator*
 
 SwapchainImageBuffers::~SwapchainImageBuffers()
 {
-    if (logicalDev)
+    if (initialized())
     {
-        vkDestroyDescriptorSetLayout(*logicalDev, descriptorSetLayout, nullptr);
+        vkDestroyDescriptorSetLayout(getLogicalDev(), descriptorSetLayout, nullptr);
     }
 }

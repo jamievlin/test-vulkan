@@ -7,7 +7,7 @@
 #include "SwapchainComponent.h"
 #include "UniformObjects.h"
 
-class SwapchainImageBuffers
+class SwapchainImageBuffers : public AVkGraphicsBase
 {
 public:
     VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
@@ -39,7 +39,6 @@ public:
             operator[](uint32_t const& i);
 
 private:
-    VkDevice* logicalDev=nullptr;
     VmaAllocator* allocator=nullptr;
     uint32_t imgSize=0;
 };

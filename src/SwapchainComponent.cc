@@ -17,7 +17,9 @@ SwapchainComponents::initSwapChain(
     }
 
     swapchainFormat=detail.selectFmt();
-    swapchainExtent=detail.chooseSwapExtent(windowHeight.first, windowHeight.second);
+    swapchainExtent=detail.chooseSwapExtent(
+            static_cast<uint32_t>(windowHeight.first),
+            static_cast<uint32_t>(windowHeight.second));
 
     uint32_t imgCount=std::min(
             detail.capabilities.minImageCount + 1,
@@ -68,7 +70,7 @@ SwapchainComponents::initSwapChain(
     createInfo.clipped = VK_TRUE;
     createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-    return vkCreateSwapchainKHR(*logicalDev, &createInfo, nullptr, &swapChain);
+    return vkCreateSwapchainKHR(getLogicalDev(), &createInfo, nullptr, &swapChain);
 }
 
 VkResult SwapchainComponents::createRenderPasses()
@@ -114,13 +116,13 @@ VkResult SwapchainComponents::createRenderPasses()
     renderPassCreateInfo.dependencyCount = 1;
     renderPassCreateInfo.pDependencies = &dep;
 
-    return vkCreateRenderPass(*logicalDev, &renderPassCreateInfo, nullptr, &renderPass);
+    return vkCreateRenderPass(getLogicalDev(), &renderPassCreateInfo, nullptr, &renderPass);
 }
 
 SwapchainComponents::SwapchainComponents(
         VkDevice* logicalDev, VkPhysicalDevice const& physDevice,
         VkSurfaceKHR const& surface, std::pair<size_t, size_t> const& windowHeight) :
-            detail(physDevice, surface), logicalDev(logicalDev)
+            AVkGraphicsBase(logicalDev), detail(physDevice, surface)
 {
     CHECK_VK_SUCCESS(
             initSwapChain(physDevice, windowHeight, surface),
@@ -139,7 +141,7 @@ SwapchainComponents::SwapchainComponents(
                    [this, &fmt=swapchainFormat.format](VkImage& swapChainImg)
                    {
                        return SwapchainImageSupport(
-                               this->logicalDev, this->renderPass, this->swapchainExtent,
+                               this->getLogicalDevPtr(), this->renderPass, this->swapchainExtent,
                                swapChainImg, fmt);
                    });
 
@@ -147,7 +149,8 @@ SwapchainComponents::SwapchainComponents(
 }
 
 SwapchainComponents::SwapchainComponents(SwapchainComponents&& swpchainComp) noexcept:
-        detail(std::move(swpchainComp.detail)), logicalDev(swpchainComp.logicalDev),
+        AVkGraphicsBase(std::move(swpchainComp)),
+        detail(std::move(swpchainComp.detail)),
         swapChain(std::move(swpchainComp.swapChain)),
         swapChainImages(std::move(swpchainComp.swapChainImages)),
         swapchainFormat(std::move(swpchainComp.swapchainFormat)),
@@ -156,13 +159,12 @@ SwapchainComponents::SwapchainComponents(SwapchainComponents&& swpchainComp) noe
         renderPass(std::move(swpchainComp.renderPass)),
         descriptorPool(std::move(swpchainComp.descriptorPool))
 {
-    swpchainComp.logicalDev = nullptr;
 }
 
 SwapchainComponents& SwapchainComponents::operator=(SwapchainComponents&& swpchainComp) noexcept
 {
+    AVkGraphicsBase::operator=(std::move(swpchainComp));
     detail = std::move(swpchainComp.detail);
-    logicalDev = std::move(swpchainComp.logicalDev);
 
     swapChain = std::move(swpchainComp.swapChain);
     swapChainImages = std::move(swpchainComp.swapChainImages);
@@ -172,18 +174,16 @@ SwapchainComponents& SwapchainComponents::operator=(SwapchainComponents&& swpcha
     renderPass = std::move(swpchainComp.renderPass);
     descriptorPool = std::move(swpchainComp.descriptorPool);
 
-    swpchainComp.logicalDev = nullptr;
-
     return *this;
 }
 
 SwapchainComponents::~SwapchainComponents()
 {
-    if (logicalDev)
+    if (initialized())
     {
-        vkDestroyDescriptorPool(*logicalDev, descriptorPool, nullptr);
-        vkDestroyRenderPass(*logicalDev, renderPass, nullptr);
-        vkDestroySwapchainKHR(*logicalDev, swapChain, nullptr);
+        vkDestroyDescriptorPool(getLogicalDev(), descriptorPool, nullptr);
+        vkDestroyRenderPass(getLogicalDev(), renderPass, nullptr);
+        vkDestroySwapchainKHR(getLogicalDev(), swapChain, nullptr);
     }
 }
 
@@ -204,6 +204,6 @@ VkResult SwapchainComponents::createDescriptorPool()
     createInfo.pPoolSizes = &poolSize;
     createInfo.maxSets = imageCount();
 
-    return vkCreateDescriptorPool(*logicalDev, &createInfo, nullptr, &descriptorPool);
+    return vkCreateDescriptorPool(getLogicalDev(), &createInfo, nullptr, &descriptorPool);
 
 }

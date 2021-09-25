@@ -5,7 +5,7 @@
 #pragma once
 #include "common.h"
 
-class DisposableCmdBuffer
+class DisposableCmdBuffer : public AVkGraphicsBase
 {
 public:
     DisposableCmdBuffer();
@@ -22,10 +22,10 @@ public:
     VkCommandBuffer& commandBuffer();
     VkResult submit(VkQueue& queue);
     void finish();
-private:
-    VkDevice* logicalDev=nullptr;
-    VkCommandPool* cmdPool=nullptr;
 
+private:
+    VkCommandPool* cmdPool=nullptr;
     VkCommandBuffer cmdBuffer=VK_NULL_HANDLE;
+
     bool disposed=false;
 };

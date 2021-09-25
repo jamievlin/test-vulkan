@@ -7,7 +7,7 @@ constexpr char const* CREATE_SEMAPHORE_FAILED = "Cannot create Semaphore!";
 constexpr char const* CREATE_FENCE_FAILED = "Cannot create Fence!";
 
 FrameSemaphores::FrameSemaphores(VkDevice* logicalDev, VkFenceCreateFlags const& fenceFlags) :
-        logicalDev(logicalDev)
+        AVkGraphicsBase(logicalDev)
 {
     VkSemaphoreCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -29,7 +29,7 @@ FrameSemaphores::FrameSemaphores(VkDevice* logicalDev, VkFenceCreateFlags const&
 }
 
 FrameSemaphores::FrameSemaphores(FrameSemaphores&& frameSem) noexcept:
-        logicalDev(frameSem.logicalDev)
+        AVkGraphicsBase(std::move(frameSem))
 {
     imgAvailable = frameSem.imgAvailable;
     renderFinished = frameSem.renderFinished;
@@ -37,19 +37,17 @@ FrameSemaphores::FrameSemaphores(FrameSemaphores&& frameSem) noexcept:
 
     frameSem.imgAvailable = VK_NULL_HANDLE;
     frameSem.renderFinished = VK_NULL_HANDLE;
-    frameSem.logicalDev = VK_NULL_HANDLE;
     frameSem.inFlight = VK_NULL_HANDLE;
 }
 
 FrameSemaphores& FrameSemaphores::operator=(FrameSemaphores&& frameSem) noexcept
 {
-    logicalDev = frameSem.logicalDev;
+    AVkGraphicsBase::operator=(std::move(frameSem));
     imgAvailable = frameSem.imgAvailable;
     renderFinished = frameSem.renderFinished;
 
     frameSem.imgAvailable = VK_NULL_HANDLE;
     frameSem.renderFinished = VK_NULL_HANDLE;
-    frameSem.logicalDev = VK_NULL_HANDLE;
     frameSem.inFlight = VK_NULL_HANDLE;
 
     return *this;
@@ -57,12 +55,12 @@ FrameSemaphores& FrameSemaphores::operator=(FrameSemaphores&& frameSem) noexcept
 
 FrameSemaphores::~FrameSemaphores()
 {
-    if (logicalDev != nullptr)
+    if (initialized())
     {
-        vkDestroySemaphore(*logicalDev, imgAvailable, nullptr);
-        vkDestroySemaphore(*logicalDev, renderFinished, nullptr);
-        vkDestroyFence(*logicalDev, inFlight, nullptr);
+        vkDestroySemaphore(getLogicalDev(), imgAvailable, nullptr);
+        vkDestroySemaphore(getLogicalDev(), renderFinished, nullptr);
+        vkDestroyFence(getLogicalDev(), inFlight, nullptr);
     }
 }
 
-FrameSemaphores::FrameSemaphores() : logicalDev(nullptr) {}
+FrameSemaphores::FrameSemaphores() : AVkGraphicsBase() {}

@@ -13,7 +13,7 @@ namespace Buffers
             VkPhysicalDevice const& physicalDev, VkMemoryPropertyFlags properties,
             uint32_t filter = 0xFFFFFFFF);
 
-    class Buffer
+    class Buffer : public AVkGraphicsBase
     {
     public:
         VkBuffer vertexBuffer = VK_NULL_HANDLE;
@@ -36,10 +36,6 @@ namespace Buffers
         Buffer& operator=(Buffer&& buf) noexcept;
 
         virtual ~Buffer();
-        explicit operator bool() const;
-
-        [[nodiscard]]
-        bool isInitialized() const;
 
         [[nodiscard]]
         uint32_t getSize() const;
@@ -62,11 +58,7 @@ namespace Buffers
                 VkMemoryPropertyFlags const& memoryFlags,
                 std::set<uint32_t> const& queues);
 
-        [[nodiscard]]
-        VkDevice* getLogicalDev();
-
     private:
-        VkDevice* logicalDev = nullptr;
         VmaAllocator* allocator = nullptr;
         size_t size = -1;
     };

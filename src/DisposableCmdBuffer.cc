@@ -5,7 +5,7 @@
 #include "DisposableCmdBuffer.h"
 
 DisposableCmdBuffer::DisposableCmdBuffer(VkDevice* logicalDev, VkCommandPool* pool) :
-        logicalDev(logicalDev), cmdPool(pool), disposed(false)
+        AVkGraphicsBase(logicalDev), cmdPool(pool), disposed(false)
 {
     VkCommandBufferAllocateInfo allocateInfo = {};
     allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -26,20 +26,18 @@ DisposableCmdBuffer::DisposableCmdBuffer(VkDevice* logicalDev, VkCommandPool* po
 }
 
 DisposableCmdBuffer::DisposableCmdBuffer(DisposableCmdBuffer&& dcb) noexcept:
-        logicalDev(std::move(dcb.logicalDev)), cmdPool(std::move(dcb.cmdPool)),
+        AVkGraphicsBase(std::move(dcb)), cmdPool(std::move(dcb.cmdPool)),
         cmdBuffer(std::move(dcb.cmdBuffer)), disposed(std::move(dcb.disposed))
 {
-    dcb.logicalDev = nullptr;
 }
 
 DisposableCmdBuffer& DisposableCmdBuffer::operator=(DisposableCmdBuffer&& dcb) noexcept
 {
-    logicalDev = std::move(dcb.logicalDev);
+    AVkGraphicsBase::operator=(std::move(dcb));
     cmdPool = std::move(dcb.cmdPool);
     cmdBuffer = std::move(dcb.cmdBuffer);
     disposed = std::move(dcb.disposed);
 
-    dcb.logicalDev = nullptr;
     return *this;
 }
 
@@ -55,7 +53,7 @@ VkResult DisposableCmdBuffer::submit(VkQueue& queue)
 
 void DisposableCmdBuffer::finish()
 {
-    if (logicalDev && !disposed)
+    if (initialized() && !disposed)
     {
         CHECK_VK_SUCCESS(vkEndCommandBuffer(cmdBuffer),
                          ErrorMessages::FAILED_CANNOT_END_CMD_BUFFER);
@@ -66,13 +64,13 @@ void DisposableCmdBuffer::finish()
 DisposableCmdBuffer::~DisposableCmdBuffer()
 {
     finish();
-    if (logicalDev)
+    if (initialized())
     {
-        vkFreeCommandBuffers(*logicalDev, *cmdPool, 1, &cmdBuffer);
+        vkFreeCommandBuffers(getLogicalDev(), *cmdPool, 1, &cmdBuffer);
     }
 }
 
-DisposableCmdBuffer::DisposableCmdBuffer() : logicalDev(nullptr), disposed(true) {}
+DisposableCmdBuffer::DisposableCmdBuffer() : AVkGraphicsBase(), disposed(true) {}
 
 VkCommandBuffer& DisposableCmdBuffer::commandBuffer()
 {

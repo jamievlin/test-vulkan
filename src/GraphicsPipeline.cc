@@ -10,8 +10,8 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
         SwapchainComponents const& swapChain,
         std::vector<VkDescriptorSetLayout> const& descriptorSetLayout)
 {
-    auto [vertShader, ret] = Shaders::createShaderModule(*logicalDev, vertShaderName);
-    auto [fragShader, ret2] = Shaders::createShaderModule(*logicalDev, fragShaderName);
+    auto [vertShader, ret] = Shaders::createShaderModule(getLogicalDev(), vertShaderName);
+    auto [fragShader, ret2] = Shaders::createShaderModule(getLogicalDev(), fragShaderName);
     if (ret != VK_SUCCESS or ret2 != VK_SUCCESS)
     {
         throw std::runtime_error("Cannot create shader");
@@ -121,7 +121,7 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
     pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
     pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
-    CHECK_VK_SUCCESS(vkCreatePipelineLayout(*logicalDev, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout),
+    CHECK_VK_SUCCESS(vkCreatePipelineLayout(getLogicalDev(), &pipelineLayoutCreateInfo, nullptr, &pipelineLayout),
                      "Cannot create pipeline layout!");
 
     VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
@@ -145,10 +145,10 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
     pipelineCreateInfo.basePipelineIndex = -1;
 
     auto retFinal = vkCreateGraphicsPipelines(
-            *logicalDev, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr,
+            getLogicalDev(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr,
             &pipeline);
-    vkDestroyShaderModule(*logicalDev, vertShader, nullptr);
-    vkDestroyShaderModule(*logicalDev, fragShader, nullptr);
+    vkDestroyShaderModule(getLogicalDev(), vertShader, nullptr);
+    vkDestroyShaderModule(getLogicalDev(), fragShader, nullptr);
 
     return retFinal;
 }
@@ -162,7 +162,7 @@ GraphicsPipeline::GraphicsPipeline(
         std::string const& fragShader,
         SwapchainComponents const& swapChain,
         std::vector<VkDescriptorSetLayout> const& descriptorSetLayout) :
-        logicalDev(device), cmdPool(cmdPool)
+        AVkGraphicsBase(device), cmdPool(cmdPool)
 {
     CHECK_VK_SUCCESS(
             createGraphicsPipeline(vertShader, fragShader, swapChain, descriptorSetLayout),
@@ -183,26 +183,23 @@ VkResult GraphicsPipeline::createCmdBuffers(SwapchainComponents const& swapChain
     // 1 command buffer per frame buffer
     allocateInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
 
-    return vkAllocateCommandBuffers(*logicalDev, &allocateInfo, cmdBuffers.data());
+    return vkAllocateCommandBuffers(getLogicalDev(), &allocateInfo, cmdBuffers.data());
 }
 
 GraphicsPipeline::GraphicsPipeline(GraphicsPipeline&& graphicspipeline) noexcept:
-        logicalDev(std::move(graphicspipeline.logicalDev)),
+        AVkGraphicsBase(std::move(graphicspipeline)),
         pipeline(std::move(graphicspipeline.pipeline)),
         pipelineLayout(std::move(graphicspipeline.pipelineLayout)),
         cmdBuffers(std::move(graphicspipeline.cmdBuffers))
 {
-    graphicspipeline.logicalDev = nullptr;
 }
 
 GraphicsPipeline& GraphicsPipeline::operator=(GraphicsPipeline&& graphicspipeline) noexcept
 {
-    logicalDev = std::move(graphicspipeline.logicalDev);
+    AVkGraphicsBase::operator=(std::move(graphicspipeline));
     pipeline = std::move(graphicspipeline.pipeline);
     pipelineLayout = std::move(graphicspipeline.pipelineLayout);
     cmdBuffers = std::move(graphicspipeline.cmdBuffers);
-
-    graphicspipeline.logicalDev = nullptr;
 
     return *this;
 }
@@ -211,13 +208,13 @@ GraphicsPipeline& GraphicsPipeline::operator=(GraphicsPipeline&& graphicspipelin
 
 GraphicsPipeline::~GraphicsPipeline()
 {
-    if (logicalDev)
+    if (initialized())
     {
-        vkFreeCommandBuffers(*logicalDev, *cmdPool,
+        vkFreeCommandBuffers(getLogicalDev(), *cmdPool,
                              static_cast<uint32_t>(cmdBuffers.size()),
                              cmdBuffers.data());
-        vkDestroyPipeline(*logicalDev, pipeline, nullptr);
-        vkDestroyPipelineLayout(*logicalDev, pipelineLayout, nullptr);
+        vkDestroyPipeline(getLogicalDev(), pipeline, nullptr);
+        vkDestroyPipelineLayout(getLogicalDev(), pipelineLayout, nullptr);
         pipeline = VK_NULL_HANDLE;
         pipelineLayout = VK_NULL_HANDLE;
     }

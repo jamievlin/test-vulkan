@@ -36,8 +36,9 @@ struct UniformObjects
 };
 
 template<typename TUniformBuffer=UniformObjects>
-struct UniformObjBuffer : Buffers::Buffer
+class UniformObjBuffer : public Buffers::Buffer
 {
+public:
     UniformObjBuffer() = default;
     ~UniformObjBuffer() override = default;
 

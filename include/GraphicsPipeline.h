@@ -9,7 +9,7 @@
 #include "Shaders.h"
 #include "UniformObjects.h"
 
-class GraphicsPipeline
+class GraphicsPipeline : public AVkGraphicsBase
 {
 public:
     VkPipeline pipeline = VK_NULL_HANDLE;
@@ -46,7 +46,6 @@ protected:
     VkResult createCmdBuffers(SwapchainComponents const& swapChain);
 
 private:
-    VkDevice* logicalDev=nullptr;
     VkCommandPool* cmdPool=nullptr;
 };
 
