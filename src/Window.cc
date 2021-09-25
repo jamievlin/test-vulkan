@@ -240,7 +240,7 @@ VkResult Window::initInstance()
     appInfo.applicationVersion = VK_MAKE_API_VERSION(0,1,0,0);
     appInfo.pEngineName = "What?";
     appInfo.engineVersion = VK_MAKE_API_VERSION(0,1,0,0);
-    appInfo.apiVersion = VK_API_VERSION_1_2;
+    appInfo.apiVersion = VK_API_VERSION;
 
     auto extNeeded = getRequiredExts();
 
@@ -648,10 +648,8 @@ VkResult Window::createTransferCmdPool()
 
 void Window::initBuffers()
 {
-    Buffers::Buffer stagingBuffer(
+    Buffers::StagingBuffer stagingBuffer(
             &logicalDev, &allocator, dev, verts.size() * sizeof(Vertex),
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VMA_MEMORY_USAGE_CPU_TO_GPU,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             queueFamilyIndex.queuesForTransfer());
 
@@ -663,10 +661,8 @@ void Window::initBuffers()
             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    Buffers::Buffer stagingBufferIdx(
+    Buffers::StagingBuffer stagingBufferIdx(
             &logicalDev, &allocator, dev, idx.size() * sizeof(uint32_t),
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VMA_MEMORY_USAGE_CPU_TO_GPU,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             queueFamilyIndex.queuesForTransfer());
 
@@ -704,7 +700,7 @@ void Window::setUniforms(UniformObjBuffer<UniformObjects>& bufObject)
             glm::vec3(1.f, -1.f, -1.f));
     ubo.proj = projectMat;
 
-    CHECK_VK_SUCCESS(bufObject.loadData(ubo, 0), "Cannot set uniforms!");
+    CHECK_VK_SUCCESS(bufObject.loadData(ubo), "Cannot set uniforms!");
 }
 
 void Window::updateFrame(float const& deltaTime)
@@ -715,7 +711,7 @@ void Window::updateFrame(float const& deltaTime)
 VkResult Window::createAllocator()
 {
     VmaAllocatorCreateInfo createInfo = {};
-    createInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+    createInfo.vulkanApiVersion = VK_API_VERSION;
     createInfo.physicalDevice = dev;
     createInfo.device = logicalDev;
     createInfo.instance = instance;

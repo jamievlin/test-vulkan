@@ -63,3 +63,4 @@ using std::nullopt;
     }
 
 #define USE_HLSL 1
+#define VK_API_VERSION VK_API_VERSION_1_2

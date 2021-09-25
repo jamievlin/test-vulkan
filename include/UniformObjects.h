@@ -68,8 +68,8 @@ struct UniformObjBuffer : Buffers::Buffer
         return *this;
     }
 
-    VkResult loadData(TUniformBuffer const& data, uint32_t const& offset=0)
+    VkResult loadData(TUniformBuffer const& data)
     {
-        return Buffers::Buffer::loadData(&data, offset);
+        return Buffers::Buffer::loadData(&data);
     }
 };
