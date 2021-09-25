@@ -26,7 +26,7 @@ SwapChainsDetail::SwapChainsDetail(VkPhysicalDevice const& dev, VkSurfaceKHR con
 }
 
 [[nodiscard]]
-bool SwapChainsDetail::adequate()
+bool SwapChainsDetail::adequate() const
 {
     return not (formats.empty() or presentModes.empty());
 }
@@ -57,4 +57,26 @@ VkPresentModeKHR SwapChainsDetail::chooseSwapPresentMode(
     }
 
     return VK_PRESENT_MODE_FIFO_KHR; // default
+}
+
+VkExtent2D SwapChainsDetail::chooseSwapExtent(uint32_t const& preferredWidth, uint32_t const& preferredHeight) const
+{
+    if (capabilities.currentExtent.width != UINT32_MAX)
+    {
+        return capabilities.currentExtent;
+    }
+
+    // else
+    VkExtent2D actualExtent = {};
+    actualExtent.width = std::clamp(
+            preferredWidth,
+            capabilities.minImageExtent.width,
+            capabilities.maxImageExtent.width);
+
+    actualExtent.height = std::clamp(
+            preferredHeight,
+            capabilities.minImageExtent.height,
+            capabilities.maxImageExtent.height);
+
+    return actualExtent;
 }

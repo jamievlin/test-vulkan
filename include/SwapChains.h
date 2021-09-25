@@ -13,7 +13,7 @@ public:
     explicit SwapChainsDetail(VkPhysicalDevice const& dev, VkSurfaceKHR const& surface);
 
     [[nodiscard]]
-    bool adequate();
+    bool adequate() const;
 
     VkSurfaceCapabilitiesKHR capabilities = {};
     std::vector<VkSurfaceFormatKHR> formats;
@@ -31,25 +31,5 @@ public:
     [[nodiscard]]
     VkExtent2D chooseSwapExtent(
             uint32_t const& preferredWidth,
-            uint32_t const& preferredHeight) const
-    {
-        if (capabilities.currentExtent.width != UINT32_MAX)
-        {
-            return capabilities.currentExtent;
-        }
-
-        // else
-        VkExtent2D actualExtent = {};
-        actualExtent.width = std::clamp(
-                preferredWidth,
-                capabilities.minImageExtent.width,
-                capabilities.maxImageExtent.width);
-
-        actualExtent.height = std::clamp(
-                preferredHeight,
-                capabilities.minImageExtent.height,
-                capabilities.maxImageExtent.height);
-
-        return actualExtent;
-    }
+            uint32_t const& preferredHeight) const;
 };
