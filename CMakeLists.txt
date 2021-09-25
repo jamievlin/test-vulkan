@@ -37,17 +37,20 @@ if (ENABLE_VALIDATION_LAYERS)
 endif(ENABLE_VALIDATION_LAYERS)
 
 
+find_path(PNGPP_PATH "png++/color.hpp")
 find_path(GLM_PATH glm/glm.hpp)
-list(APPEND INCLUDE_DIRS ${GLM_PATH})
+list(APPEND INCLUDE_DIRS ${GLM_PATH} ${PNGPP_PATH})
 
 if (WIN32)
     find_package(unofficial-vulkan-memory-allocator REQUIRED)
 endif()
+
 find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
+find_package(libpng REQUIRED)
 
 list(APPEND INCLUDE_DIRS ${Vulkan_INCLUDE_DIRS})
-set(LIBRARIES ${Vulkan_LIBRARIES} glfw)
+set(LIBRARIES ${Vulkan_LIBRARIES} glfw png)
 
 # Shader compilation
 file(GLOB SHADERS **/*.hlsl **/*.glsl)

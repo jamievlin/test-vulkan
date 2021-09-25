@@ -1,5 +1,6 @@
 #include "Window.h"
 #include "DisposableCmdBuffer.h"
+#include "helpers.h"
 
 #include <utility>
 #include <chrono>
@@ -140,7 +141,7 @@ Window::Window(
 
     graphicsPipeline = std::make_unique<GraphicsPipeline>(
             &logicalDev, dev, &cmdPool, surface,
-            "main.vert.spv", "main.frag.spv",
+            helpers::searchPath("main.vert.spv"), helpers::searchPath("main.frag.spv"),
             *swapchainComponent,
             std::vector<VkDescriptorSetLayout> {uniformData->descriptorSetLayout});
 
@@ -597,7 +598,7 @@ void Window::resetSwapChain()
 
     graphicsPipeline = std::make_unique<GraphicsPipeline>(
             &logicalDev, dev, &cmdPool, surface,
-            "main.vert.spv", "main.frag.spv",
+            helpers::searchPath("main.vert.spv"), helpers::searchPath("main.frag.spv"),
             *swapchainComponent,
             std::vector<VkDescriptorSetLayout> {uniformData->descriptorSetLayout});
 
@@ -674,12 +675,19 @@ void Window::initBuffers()
             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
+    helpers::img_r8g8b8a8 image = helpers::fromPng(helpers::searchPath("assets/square_floor_diff_2k.png"));
+    Buffers::StagingBuffer imageStgBuffer(
+            &logicalDev, &allocator, dev, image.totalSize(),
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            queueFamilyIndex.queuesForTransfer());
+    imageStgBuffer.loadData(image.imgData.data());
+
+
+
     // submit in one batch
     DisposableCmdBuffer dcb(&logicalDev, &cmdTransferPool);
-
     vertexBuffer->cmdCopyDataFrom(stagingBuffer, dcb.commandBuffer());
     idxBuffer->cmdCopyDataFrom(stagingBufferIdx, dcb.commandBuffer());
-
     dcb.finish();
     CHECK_VK_SUCCESS(dcb.submit(transferQueue), ErrorMessages::FAILED_CANNOT_SUBMIT_QUEUE);
     CHECK_VK_SUCCESS(vkQueueWaitIdle(transferQueue), ErrorMessages::FAILED_WAIT_IDLE);
