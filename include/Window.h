@@ -9,6 +9,7 @@
 #include "Buffers.h"
 #include "VertexBuffers.h"
 #include "SwapchainImgBuffers.h"
+#include "Image.h"
 
 std::vector<char const*> getRequiredExts();
 bool deviceSuitable(VkPhysicalDevice const& dev);
@@ -133,6 +134,8 @@ private:
 
     std::vector<FrameSemaphores> frameSemaphores;
     size_t currentFrame = 0;
+
+    std::unique_ptr<Image::Image> img;
 
     float totalTime = 0;
 };

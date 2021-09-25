@@ -18,7 +18,7 @@ namespace helpers
     template<typename PixelFmt>
     struct img
     {
-        uint64_t width, height;
+        uint32_t width, height;
         std::vector<PixelFmt> imgData;
 
         [[nodiscard]]

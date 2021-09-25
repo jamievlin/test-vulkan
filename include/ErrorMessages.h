@@ -33,5 +33,6 @@ namespace ErrorMessages
     CHAR_CONSTEXPR FAILED_CANNOT_CREATE_DESC_POOL = "Cannot create Descriptor pool!";
 
     CHAR_CONSTEXPR FAILED_CANNOT_CREATE_ALLOCATOR = "Cannot create allocator!";
+    CHAR_CONSTEXPR FAILED_CANNOT_CREATE_IMAGE = "Cannot create image!";
 
 }

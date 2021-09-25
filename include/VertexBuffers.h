@@ -21,9 +21,9 @@ namespace Buffers
                 VmaAllocator* allocator,
                 VkPhysicalDevice const& physicalDev,
                 std::vector<TVertex> const& vertices,
-                optUint32Set const& usedQueues = nullopt,
                 VkFlags const& additionalFlags = 0,
-                VkMemoryPropertyFlags const& memoryFlags = 0
+                VkMemoryPropertyFlags const& memoryFlags = 0,
+                optUint32Set const& usedQueues = nullopt
         ) : Buffer(dev, allocator, physicalDev,
                    vertices.size() * sizeof(TVertex),
                    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | additionalFlags,
@@ -40,9 +40,9 @@ namespace Buffers
                 VmaAllocator* allocator,
                 VkPhysicalDevice const& physicalDev,
                 size_t vertexBufferLength,
-                optUint32Set const& usedQueues = nullopt,
                 VkFlags const& additionalFlags = 0,
-                VkMemoryPropertyFlags const& memoryFlags = 0
+                VkMemoryPropertyFlags const& memoryFlags = 0,
+                optUint32Set const& usedQueues = nullopt
 
         ) : Buffer(dev, allocator, physicalDev,
                    vertexBufferLength * sizeof(TVertex),
@@ -68,9 +68,9 @@ namespace Buffers
                 VmaAllocator* allocator,
                 VkPhysicalDevice const& physicalDev,
                 std::vector<uint32_t> const& indices,
-                optUint32Set const& usedQueues = nullopt,
                 VkFlags const& additionalFlags = 0,
-                VkMemoryPropertyFlags const& memoryFlags = 0
+                VkMemoryPropertyFlags const& memoryFlags = 0,
+                optUint32Set const& usedQueues = nullopt
         ) : Buffer(dev, allocator, physicalDev,
                    indices.size() * sizeof(uint32_t),
                    VK_BUFFER_USAGE_INDEX_BUFFER_BIT | additionalFlags,
@@ -87,9 +87,9 @@ namespace Buffers
                 VmaAllocator* allocator,
                 VkPhysicalDevice const& physicalDev,
                 size_t vertexBufferLength,
-                optUint32Set const& usedQueues = nullopt,
                 VkFlags const& additionalFlags = 0,
-                VkMemoryPropertyFlags const& memoryFlags = 0
+                VkMemoryPropertyFlags const& memoryFlags = 0,
+                optUint32Set const& usedQueues = nullopt
 
         ) : Buffer(dev, allocator, physicalDev,
                    vertexBufferLength * sizeof(uint32_t),

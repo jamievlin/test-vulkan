@@ -26,8 +26,7 @@ class AVkGraphicsBase
 public:
     AVkGraphicsBase() = default;
     explicit AVkGraphicsBase(VkDevice* logicalDev) : logicalDev(logicalDev) {}
-
-    ~AVkGraphicsBase() = default;
+    virtual ~AVkGraphicsBase() = default;
 
     AVkGraphicsBase(AVkGraphicsBase const&) = delete;
     AVkGraphicsBase& operator= (AVkGraphicsBase const&) = delete;

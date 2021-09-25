@@ -207,6 +207,7 @@ VkResult Window::setupDebugMessenger()
 
 Window::~Window()
 {
+    img.reset();
     idxBuffer.reset();
     vertexBuffer.reset();
     frameSemaphores.clear();
@@ -658,7 +659,6 @@ void Window::initBuffers()
 
     vertexBuffer = std::make_unique<Buffers::VertexBuffer<Vertex>>(
             &logicalDev, &allocator, dev, verts.size(),
-            queueFamilyIndex.queuesForTransfer(),
             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
@@ -671,7 +671,6 @@ void Window::initBuffers()
 
     idxBuffer = std::make_unique<Buffers::IndexBuffer>(
             &logicalDev, &allocator, dev, idx.size(),
-            queueFamilyIndex.queuesForTransfer(),
             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
@@ -681,8 +680,11 @@ void Window::initBuffers()
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             queueFamilyIndex.queuesForTransfer());
     imageStgBuffer.loadData(image.imgData.data());
-
-
+    img = std::make_unique<Image::Image>(
+            &logicalDev, &allocator, std::pair<uint32_t,uint32_t>(image.width, image.height),
+            VK_FORMAT_R8G8B8A8_SRGB,
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     // submit in one batch
     DisposableCmdBuffer dcb(&logicalDev, &cmdTransferPool);
