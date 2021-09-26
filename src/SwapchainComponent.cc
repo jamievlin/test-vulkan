@@ -194,14 +194,19 @@ uint32_t SwapchainComponents::imageCount() const
 
 VkResult SwapchainComponents::createDescriptorPool()
 {
-    VkDescriptorPoolSize poolSize = {};
-    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSize.descriptorCount = imageCount();
+
+
+    VkDescriptorPoolSize poolSize[2] = {{}, {}};
+    poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSize[0].descriptorCount = imageCount();
+
+    poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSize[1].descriptorCount = imageCount();
 
     VkDescriptorPoolCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    createInfo.poolSizeCount = 1;
-    createInfo.pPoolSizes = &poolSize;
+    createInfo.poolSizeCount = 2;
+    createInfo.pPoolSizes = poolSize;
     createInfo.maxSets = imageCount();
 
     return vkCreateDescriptorPool(getLogicalDev(), &createInfo, nullptr, &descriptorPool);

@@ -4,7 +4,7 @@
 
 #include "SwapchainImgBuffers.h"
 
-void SwapchainImageBuffers::configureBuffers(uint32_t const& binding)
+void SwapchainImageBuffers::configureBuffers(uint32_t const& binding, Image::Image& img)
 {
     for (uint32_t i = 0; i < imgSize; ++i)
     {
@@ -20,23 +20,49 @@ void SwapchainImageBuffers::configureBuffers(uint32_t const& binding)
         descriptorWrite.dstArrayElement = 0;
         descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorWrite.descriptorCount = 1;
-
         descriptorWrite.pBufferInfo = &bufferInfo;
-        descriptorWrite.pImageInfo = nullptr;
-        descriptorWrite.pTexelBufferView = nullptr;
 
-        vkUpdateDescriptorSets(getLogicalDev(), 1, &descriptorWrite, 0, nullptr);
+        VkDescriptorImageInfo imageInfo = {};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = img.imgView;
+        imageInfo.sampler = img.baseSampler;
+
+        VkWriteDescriptorSet descriptorWriteImg = {};
+        descriptorWriteImg.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWriteImg.dstSet = descriptorSets[i];
+        descriptorWriteImg.dstBinding = 1;
+        descriptorWriteImg.dstArrayElement = 0;
+        descriptorWriteImg.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWriteImg.descriptorCount = 1;
+        descriptorWriteImg.pImageInfo = &imageInfo;
+
+        std::vector<VkWriteDescriptorSet> descriptorWriteInfo = {descriptorWrite, descriptorWriteImg};
+
+        vkUpdateDescriptorSets(
+                getLogicalDev(), static_cast<uint32_t>(descriptorWriteInfo.size()),
+                descriptorWriteInfo.data(), 0, nullptr);
     }
 }
 
 VkResult SwapchainImageBuffers::createDescriptorSetLayout()
 {
-    auto layout = UniformObjects::descriptorSetLayout(0);
+
+    VkDescriptorSetLayoutBinding imgBindingData = {};
+    imgBindingData.binding = 1;
+    imgBindingData.descriptorCount = 1;
+    imgBindingData.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    imgBindingData.pImmutableSamplers = nullptr;
+    imgBindingData.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    std::vector<VkDescriptorSetLayoutBinding> bindings = {
+            UniformObjects::descriptorSetLayout(0),
+            imgBindingData
+    };
 
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = 1;
-    layoutInfo.pBindings = &layout;
+    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.pBindings = bindings.data();
 
     return vkCreateDescriptorSetLayout(getLogicalDev(), &layoutInfo, nullptr, &descriptorSetLayout);
 }
@@ -106,14 +132,16 @@ void SwapchainImageBuffers::createUniformBuffers(VkPhysicalDevice const& physDev
 
 SwapchainImageBuffers::SwapchainImageBuffers(VkDevice* logicalDev, VmaAllocator* allocator,
                                              VkPhysicalDevice const& physDev,
-                                             SwapchainComponents const& swapchainComponent, uint32_t const& binding) :
+                                             SwapchainComponents const& swapchainComponent,
+                                             Image::Image& img,
+                                             uint32_t const& binding) :
         AVkGraphicsBase(logicalDev), allocator(allocator), imgSize(swapchainComponent.imageCount())
 {
     CHECK_VK_SUCCESS(createDescriptorSetLayout(), "Cannot create descriptor set layout!");
     createUniformBuffers(physDev, swapchainComponent);
     CHECK_VK_SUCCESS(createDescriptorSets(swapchainComponent), "Cannot create descriptor sets!");
 
-    configureBuffers(binding);
+    configureBuffers(binding, img);
 }
 
 SwapchainImageBuffers::~SwapchainImageBuffers()

@@ -5,6 +5,7 @@
 #pragma once
 #include "common.h"
 #include "SwapchainComponent.h"
+#include "Image.h"
 #include "UniformObjects.h"
 
 class SwapchainImageBuffers : public AVkGraphicsBase
@@ -29,10 +30,11 @@ public:
             VmaAllocator* allocator,
             VkPhysicalDevice const& physDev,
             SwapchainComponents const& swapchainComponent,
+            Image::Image& img,
             uint32_t const& binding);
 
     void createUniformBuffers(VkPhysicalDevice const& physDev, SwapchainComponents const& swapchainComponent);
-    void configureBuffers(uint32_t const& binding);
+    void configureBuffers(uint32_t const& binding, Image::Image& img);
     VkResult createDescriptorSetLayout();
     VkResult createDescriptorSets(SwapchainComponents const& swapchainComponent);
     std::pair<UniformObjBuffer<UniformObjects>&, VkDescriptorSet& >

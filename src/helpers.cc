@@ -56,9 +56,9 @@ namespace helpers
                 auto colorData = inputIm.get_pixel(i,j);
                 uint32_t pixelData =
                         colorData.red |
-                        colorData.green << sizeof(uint8_t) |
-                        colorData.blue << 2 * sizeof(uint8_t) |
-                        colorData.alpha << 3 * sizeof(uint8_t);
+                        colorData.green << (sizeof(uint8_t) * 8) |
+                        colorData.blue << (2 * sizeof(uint8_t) * 8) |
+                        colorData.alpha << (3 * sizeof(uint8_t) * 8);
                 im.emplace_back(pixelData);
             }
         }

@@ -5,6 +5,9 @@ struct VertexInput
 
     [[vk::location(1)]]
     float3 inColor;
+
+    [[vk::location(2)]]
+    float2 texCoord;
 };
 
 struct PixelShaderInput
@@ -13,6 +16,9 @@ struct PixelShaderInput
 
     [[vk::location(0)]]
     float3 inColor;
+
+    [[vk::location(1)]]
+    float2 outTexCoord;
 };
 
 [[vk::binding(0,0)]]
@@ -30,5 +36,6 @@ PixelShaderInput main(VertexInput vi)
     PixelShaderInput psi;
     psi.position = float4(vi.inPosition,0,1) * model * view * proj;
     psi.inColor = vi.inColor;
+    psi.outTexCoord = vi.texCoord;
     return psi;
 }

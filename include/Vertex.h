@@ -9,11 +9,12 @@ struct Vertex
 {
     glm::vec2 pos;
     glm::vec3 color;
+    glm::vec2 texCoord;
 
     // relevant static functions
 
     static VkVertexInputBindingDescription bindingDescription();
-    static std::array<VkVertexInputAttributeDescription,2> attributeDescription();
+    static std::array<VkVertexInputAttributeDescription,3> attributeDescription();
 };
 
 

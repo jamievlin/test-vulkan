@@ -15,10 +15,10 @@ const std::vector<char const*> requiredDevExtension = {
 };
 
 const std::vector<Vertex> verts = {
-        {{0.f, 0.f}, {1.f, 0.f, 0.f}},
-        {{0.5f, 0.f}, {0.f, 1.f, 0.f}},
-        {{0.f, 0.5f}, {0.f, 0.f, 1.f}},
-        {{0.5f, 0.5f}, {0.5f, 0.5f, 0.5f}},
+        {{0.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f}},
+        {{0.5f, 0.f}, {0.f, 1.f, 0.f}, {1.f, 0.f}},
+        {{0.f, 0.5f}, {0.f, 0.f, 1.f}, {0.f, 1.f}},
+        {{0.5f, 0.5f}, {0.5f, 0.5f, 0.5f}, {1.f, 1.f}},
 };
 
 const std::vector<uint32_t> idx = {
@@ -87,7 +87,11 @@ bool deviceSuitable(VkPhysicalDevice const& dev)
     vkGetPhysicalDeviceProperties(dev, &properties);
     vkGetPhysicalDeviceFeatures(dev, &features);
 
-    return checkDeviceExtensionSupport(dev) && features.tessellationShader && features.geometryShader;
+    return
+    checkDeviceExtensionSupport(dev)
+        && features.tessellationShader
+        && features.geometryShader
+        && features.samplerAnisotropy;
 }
 
 Window::Window(
@@ -135,9 +139,12 @@ Window::Window(
     CHECK_VK_SUCCESS(createCommandPool(), ErrorMessages::CREATE_COMMAND_POOL_FAILED);
     CHECK_VK_SUCCESS(createTransferCmdPool(), "Cannot create transfer command pool!");
 
+    // for vertex buffer
+    initBuffers();
+
     uniformData = std::make_unique<SwapchainImageBuffers>(
-            &logicalDev, &allocator, dev, *swapchainComponent, 0
-            );
+            &logicalDev, &allocator, dev, *swapchainComponent, *img, 0
+    );
 
     graphicsPipeline = std::make_unique<GraphicsPipeline>(
             &logicalDev, dev, &cmdPool, surface,
@@ -149,9 +156,6 @@ Window::Window(
     {
         frameSemaphores.emplace_back(&logicalDev);
     }
-
-    // for vertex buffer
-    initBuffers();
 }
 
 int Window::mainLoop()
@@ -397,6 +401,7 @@ VkResult Window::createLogicalDevice()
     VkDeviceQueueCreateInfo queues[] = {createQueueInfo, presentationQueueInfo, transferQueueInfo};
 
     VkPhysicalDeviceFeatures feat = {};
+    feat.samplerAnisotropy = VK_TRUE;
 
     auto deviceExts = getRequiredDeviceExts();
 
@@ -594,7 +599,7 @@ void Window::resetSwapChain()
             surface, std::make_pair(this->width, this->height));
 
     uniformData = std::make_unique<SwapchainImageBuffers>(
-            &logicalDev, &allocator, dev, *swapchainComponent, 0
+            &logicalDev, &allocator, dev, *swapchainComponent, *img, 0
     );
 
     graphicsPipeline = std::make_unique<GraphicsPipeline>(
@@ -674,22 +679,47 @@ void Window::initBuffers()
             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    helpers::img_r8g8b8a8 image = helpers::fromPng(helpers::searchPath("assets/square_floor_diff_2k.png"));
+    helpers::img_r8g8b8a8 image = helpers::fromPng(helpers::searchPath("assets/smile.png"));
     Buffers::StagingBuffer imageStgBuffer(
             &logicalDev, &allocator, dev, image.totalSize(),
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             queueFamilyIndex.queuesForTransfer());
     imageStgBuffer.loadData(image.imgData.data());
+
+    VkSamplerCreateInfo samplerInfo = {};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.anisotropyEnable = VK_TRUE;
+    samplerInfo.maxAnisotropy = 16;
+    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+    samplerInfo.compareEnable = VK_FALSE;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerInfo.mipLodBias = 0.0f;
+    samplerInfo.minLod = 0.0f;
+    samplerInfo.maxLod = 0.0f;
+
+
     img = std::make_unique<Image::Image>(
             &logicalDev, &allocator, std::pair<uint32_t,uint32_t>(image.width, image.height),
             VK_FORMAT_R8G8B8A8_SRGB,
             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            samplerInfo);
 
     // submit in one batch
     DisposableCmdBuffer dcb(&logicalDev, &cmdTransferPool);
+
     vertexBuffer->cmdCopyDataFrom(stagingBuffer, dcb.commandBuffer());
     idxBuffer->cmdCopyDataFrom(stagingBufferIdx, dcb.commandBuffer());
+    img->cmdTransitionBeginCopy(dcb.commandBuffer());
+    img->cmdCopyFromBuffer(imageStgBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dcb.commandBuffer());
+    img->cmdTransitionEndCopy(dcb.commandBuffer());
+
     dcb.finish();
     CHECK_VK_SUCCESS(dcb.submit(transferQueue), ErrorMessages::FAILED_CANNOT_SUBMIT_QUEUE);
     CHECK_VK_SUCCESS(vkQueueWaitIdle(transferQueue), ErrorMessages::FAILED_WAIT_IDLE);

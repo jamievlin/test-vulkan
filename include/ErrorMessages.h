@@ -35,4 +35,8 @@ namespace ErrorMessages
     CHAR_CONSTEXPR FAILED_CANNOT_CREATE_ALLOCATOR = "Cannot create allocator!";
     CHAR_CONSTEXPR FAILED_CANNOT_CREATE_IMAGE = "Cannot create image!";
 
+    CHAR_CONSTEXPR FAILED_CANNOT_CREATE_IMAGE_VIEW = "Cannot create image view!";
+
+    CHAR_CONSTEXPR FAILED_CANNOT_CREATE_SAMPLER = "Cannot create image sampler!";
+
 }

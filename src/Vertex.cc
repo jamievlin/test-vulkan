@@ -14,10 +14,11 @@ VkVertexInputBindingDescription Vertex::bindingDescription()
     return desc;
 }
 
-std::array<VkVertexInputAttributeDescription, 2> Vertex::attributeDescription()
+std::array<VkVertexInputAttributeDescription, 3> Vertex::attributeDescription()
 {
     VkVertexInputAttributeDescription atrPos = {};
     VkVertexInputAttributeDescription atrColor = {};
+    VkVertexInputAttributeDescription atrTexCoord = {};
 
     atrPos.binding = 0;
     atrPos.location = 0;
@@ -29,5 +30,10 @@ std::array<VkVertexInputAttributeDescription, 2> Vertex::attributeDescription()
     atrColor.format = VK_FORMAT_R32G32B32_SFLOAT;
     atrColor.offset = offsetof(Vertex, color);
 
-    return {atrPos, atrColor};
+    atrTexCoord.binding = 0;
+    atrTexCoord.location = 2;
+    atrTexCoord.format = VK_FORMAT_R32G32_SFLOAT;
+    atrTexCoord.offset = offsetof(Vertex, texCoord);
+
+    return {atrPos, atrColor, atrTexCoord};
 }

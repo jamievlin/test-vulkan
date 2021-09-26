@@ -4,6 +4,9 @@ struct PixelShaderInput
 
     [[vk::location(0)]]
     float3 inColor;
+
+    [[vk::location(1)]]
+    float2 outTexCoord;
 };
 
 struct PixelShaderOutput
@@ -12,7 +15,7 @@ struct PixelShaderOutput
     float4 fragColor : SV_TARGET;
 };
 
-[[vk::binding(0,0)]]
+[[vk::binding(0)]]
 cbuffer UBO
 {
     float time;
@@ -21,12 +24,18 @@ cbuffer UBO
     float4x4 model;
 };
 
+[[vk::binding(1)]]
+Texture2D<float4> tex;
+
+[[vk::binding(1)]]
+SamplerState sLinear;
+
+
 
 PixelShaderOutput main(PixelShaderInput psi)
 {
     PixelShaderOutput pso;
     float multValue = 0.5 + (sin(1.1 * time)) * 0.5;
-    pso.fragColor = float4(multValue * psi.inColor,1);
-
+    pso.fragColor = tex.SampleLevel(sLinear, psi.outTexCoord, 0); // float4(multValue * psi.inColor,1);
     return pso;
 }
