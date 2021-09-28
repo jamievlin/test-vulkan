@@ -15,17 +15,17 @@ const std::vector<Vertex> verts = {
         {{0.f, 0.5f, 0.f}, {0.f, 0.f, 1.f}, {0.f, 1.f}},
         {{0.5f, 0.5f, 0.f}, {0.5f, 0.5f, 0.5f}, {1.f, 1.f}},
 
-        {{0.f, 0.f, .5f}, {1.f, 0.f, 0.f}, {0.f, 0.f}},
-        {{0.5f, 0.f, .5f}, {0.f, 1.f, 0.f}, {1.f, 0.f}},
-        {{0.f, 0.5f, .5f}, {0.f, 0.f, 1.f}, {0.f, 1.f}},
-        {{0.5f, 0.5f, .5f}, {0.5f, 0.5f, 0.5f}, {1.f, 1.f}},
+        {{0.f, 0.f, .2f}, {1.f, 0.f, 0.f}, {0.f, 0.f}},
+        {{0.5f, 0.f, .2f}, {0.f, 1.f, 0.f}, {1.f, 0.f}},
+        {{0.f, 0.5f, .2f}, {0.f, 0.f, 1.f}, {0.f, 1.f}},
+        {{0.5f, 0.5f, .2f}, {0.5f, 0.5f, 0.5f}, {1.f, 1.f}},
 };
 
 const std::vector<uint32_t> idx = {
+        4,5,6,
+        5,7,6,
         0,1,2,
         1,3,2,
-        3,4,5,
-        4,6,5
 };
 
 Window::Window(size_t const& width,
@@ -385,6 +385,16 @@ void Window::initBuffers()
     dcb.finish();
     CHECK_VK_SUCCESS(dcb.submit(transferQueue), ErrorMessages::FAILED_CANNOT_SUBMIT_QUEUE);
     CHECK_VK_SUCCESS(vkQueueWaitIdle(transferQueue), ErrorMessages::FAILED_WAIT_IDLE);
+
+    depthBuffer = Image::Image(
+            &logicalDev, &allocator, size(),
+            Image::findDepthFormat(dev),
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            nullopt,
+            nullopt,
+            VK_IMAGE_TILING_OPTIMAL, 1, VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 void Window::setUniforms(UniformObjBuffer<UniformObjects>& bufObject)

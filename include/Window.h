@@ -50,6 +50,7 @@ private:
     std::vector<FrameSemaphores> frameSemaphores;
     size_t currentFrame = 0;
     Image::Image img;
+    Image::Image depthBuffer;
     float totalTime = 0;
 
     float fovDegrees;

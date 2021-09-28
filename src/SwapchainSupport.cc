@@ -45,7 +45,6 @@ VkResult SwapchainImageSupport::createFramebuffer(VkRenderPass const& renderPass
 
 SwapchainImageSupport& SwapchainImageSupport::operator=(SwapchainImageSupport&& swpImgSupport) noexcept
 {
-    AVkGraphicsBase::operator=(std::move(swpImgSupport));
     imageView = swpImgSupport.imageView;
     frameBuffer = swpImgSupport.frameBuffer;
     imagesInFlight = swpImgSupport.imagesInFlight;
@@ -54,6 +53,7 @@ SwapchainImageSupport& SwapchainImageSupport::operator=(SwapchainImageSupport&& 
     swpImgSupport.frameBuffer = VK_NULL_HANDLE;
     swpImgSupport.imagesInFlight = VK_NULL_HANDLE;
 
+    AVkGraphicsBase::operator=(std::move(swpImgSupport));
     return *this;
 }
 
@@ -71,7 +71,6 @@ SwapchainImageSupport::SwapchainImageSupport(VkDevice* logicalDev, VkRenderPass 
                                              VkExtent2D const& extent, VkImage const& swapChainImage,
                                              VkFormat const& swapchainFormat): AVkGraphicsBase(logicalDev)
 {
-
     CHECK_VK_SUCCESS(
             createImageView(swapChainImage, swapchainFormat),
             "Cannot create image view!");
