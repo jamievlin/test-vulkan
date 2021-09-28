@@ -1,13 +1,4 @@
-struct PixelShaderInput
-{
-    float4 scrPos : SV_POSITION;
-
-    [[vk::location(0)]]
-    float3 inColor;
-
-    [[vk::location(1)]]
-    float2 outTexCoord;
-};
+#include "pixelshader.hlsli"
 
 struct PixelShaderOutput
 {
@@ -29,8 +20,6 @@ Texture2D<float4> tex;
 
 [[vk::binding(1)]]
 SamplerState sLinear;
-
-
 
 PixelShaderOutput main(PixelShaderInput psi)
 {

@@ -1,25 +1,5 @@
-struct VertexInput
-{
-    [[vk::location(0)]]
-    float2 inPosition : VTX_INPUT;
-
-    [[vk::location(1)]]
-    float3 inColor;
-
-    [[vk::location(2)]]
-    float2 texCoord;
-};
-
-struct PixelShaderInput
-{
-    float4 position : SV_POSITION;
-
-    [[vk::location(0)]]
-    float3 inColor;
-
-    [[vk::location(1)]]
-    float2 outTexCoord;
-};
+#include "vertexinput.hlsli"
+#include "pixelshader.hlsli"
 
 [[vk::binding(0,0)]]
 cbuffer UBO
@@ -30,11 +10,10 @@ cbuffer UBO
     float4x4 model;
 };
 
-
 PixelShaderInput main(VertexInput vi)
 {
     PixelShaderInput psi;
-    psi.position = float4(vi.inPosition,0,1) * model * view * proj;
+    psi.scrPos = float4(vi.inPosition,1) * model * view * proj;
     psi.inColor = vi.inColor;
     psi.outTexCoord = vi.texCoord;
     return psi;

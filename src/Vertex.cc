@@ -22,7 +22,7 @@ std::array<VkVertexInputAttributeDescription, 3> Vertex::attributeDescription()
 
     atrPos.binding = 0;
     atrPos.location = 0;
-    atrPos.format = VK_FORMAT_R32G32_SFLOAT;
+    atrPos.format = VK_FORMAT_R32G32B32_SFLOAT;
     atrPos.offset = offsetof(Vertex, pos);
 
     atrColor.binding = 0;

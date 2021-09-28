@@ -63,6 +63,12 @@ elseif (${CMAKE_BUILD_TYPE} MATCHES Release)
 endif()
 
 set(GLSLC_TARGETS --target-spv=spv1.5 --target-env=vulkan1.2)
+set(GLSLC_INCLUDE_PATH shaders/ shaders/include/)
+
+set(GLSLC_FULL_FLAGS ${GLSLC_FLAGS} ${GLSLC_TARGETS})
+foreach(inclpath IN LISTS GLSLC_INCLUDE_PATH)
+    list(APPEND GLSLC_FULL_FLAGS -I${PROJECT_SOURCE_DIR}/${inclpath} )
+endforeach()
 
 foreach(shaderFile IN LISTS SHADERS)
     get_filename_component(baseShaderName ${shaderFile} NAME_WE)
@@ -74,7 +80,7 @@ foreach(shaderFile IN LISTS SHADERS)
 
     # using glslc
     set(GLSLC_CMD glslc
-            ${GLSLC_FLAGS} ${GLSLC_TARGETS}
+            ${GLSLC_FULL_FLAGS}
             -fshader-stage=${shaderStage}
             ${shaderFile}
             -o ${shaderOutName})
