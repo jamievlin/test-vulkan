@@ -48,9 +48,10 @@ Window::Window(size_t const& width,
     );
 
     graphicsPipeline = std::make_unique<GraphicsPipeline>(
-            &logicalDev, dev, &cmdPool, surface,
+            &logicalDev, dev, &cmdPool,
             helpers::searchPath("main.vert.spv"), helpers::searchPath("main.frag.spv"),
-            *swapchainComponent,
+            swapchainComponent->swapchainExtent, swapchainComponent->imageCount(),
+            swapchainComponent->renderPass,
             std::vector<VkDescriptorSetLayout> {uniformData->descriptorSetLayout});
 
     for (size_t i=0; i < MAX_FRAMES_IN_FLIGHT; ++i)
@@ -261,9 +262,10 @@ void Window::resetSwapChain()
     );
 
     graphicsPipeline = std::make_unique<GraphicsPipeline>(
-            &logicalDev, dev, &cmdPool, surface,
+            &logicalDev, dev, &cmdPool,
             helpers::searchPath("main.vert.spv"), helpers::searchPath("main.frag.spv"),
-            *swapchainComponent,
+            swapchainComponent->swapchainExtent, swapchainComponent->imageCount(),
+            swapchainComponent->renderPass,
             std::vector<VkDescriptorSetLayout> {uniformData->descriptorSetLayout});
 
     recordCommands();

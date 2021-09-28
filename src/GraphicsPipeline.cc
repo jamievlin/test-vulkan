@@ -7,7 +7,8 @@
 VkResult GraphicsPipeline::createGraphicsPipeline(
         std::string const& vertShaderName,
         std::string const& fragShaderName,
-        SwapchainComponents const& swapChain,
+        VkExtent2D const& extent,
+        VkRenderPass const& renderPass,
         std::vector<VkDescriptorSetLayout> const& descriptorSetLayout)
 {
     auto [vertShader, ret] = Shaders::createShaderModule(getLogicalDev(), vertShaderName);
@@ -49,14 +50,14 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
     VkViewport viewport = {};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = (float)swapChain.swapchainExtent.width;
-    viewport.height=(float)swapChain.swapchainExtent.height;
+    viewport.width = (float)extent.width;
+    viewport.height=(float)extent.height;
     viewport.minDepth=0.0f;
     viewport.maxDepth=1.0f;
 
     VkRect2D scissor = {};
     scissor.offset = {0,0};
-    scissor.extent = swapChain.swapchainExtent;
+    scissor.extent = extent;
     VkPipelineViewportStateCreateInfo viewportState = {};
     viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     viewportState.viewportCount = 1;
@@ -138,7 +139,7 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
     pipelineCreateInfo.pDynamicState = nullptr;
 
     pipelineCreateInfo.layout = pipelineLayout;
-    pipelineCreateInfo.renderPass = swapChain.renderPass;
+    pipelineCreateInfo.renderPass = renderPass;
     pipelineCreateInfo.subpass = 0;
 
     pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -157,25 +158,26 @@ GraphicsPipeline::GraphicsPipeline(
         VkDevice* device,
         VkPhysicalDevice const& physDev,
         VkCommandPool* cmdPool,
-        VkSurfaceKHR const& surface,
         std::string const& vertShader,
         std::string const& fragShader,
-        SwapchainComponents const& swapChain,
+        VkExtent2D const& extent,
+        size_t const& swpchainImgCount,
+        VkRenderPass const& renderPass,
         std::vector<VkDescriptorSetLayout> const& descriptorSetLayout) :
         AVkGraphicsBase(device), cmdPool(cmdPool)
 {
     CHECK_VK_SUCCESS(
-            createGraphicsPipeline(vertShader, fragShader, swapChain, descriptorSetLayout),
+            createGraphicsPipeline(vertShader, fragShader, extent, renderPass, descriptorSetLayout),
             ErrorMessages::CREATE_GRAPHICS_PIPELINE_FAILED);
 
     CHECK_VK_SUCCESS(
-            createCmdBuffers(swapChain),
+            createCmdBuffers(swpchainImgCount),
             ErrorMessages::CREATE_COMMAND_BUFFERS_FAILED);
 }
 
-VkResult GraphicsPipeline::createCmdBuffers(SwapchainComponents const& swapChain)
+VkResult GraphicsPipeline::createCmdBuffers(size_t const& swpchainImgCount)
 {
-    cmdBuffers.resize(swapChain.swapChainImages.size());
+    cmdBuffers.resize(swpchainImgCount);
     VkCommandBufferAllocateInfo allocateInfo = {};
     allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocateInfo.commandPool = *cmdPool;

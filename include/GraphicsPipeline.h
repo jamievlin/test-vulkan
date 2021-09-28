@@ -22,10 +22,11 @@ public:
             VkDevice* device,
             VkPhysicalDevice const& physDev,
             VkCommandPool* cmdPool,
-            VkSurfaceKHR const& surface,
             std::string const& vertShader,
             std::string const& fragShader,
-            SwapchainComponents const& swapChain,
+            VkExtent2D const& extent,
+            size_t const& swpchainImgCount,
+            VkRenderPass const& renderPass,
             std::vector<VkDescriptorSetLayout> const& descriptorSetLayout = {});
 
     GraphicsPipeline(GraphicsPipeline const&) = delete;
@@ -40,10 +41,11 @@ protected:
     VkResult createGraphicsPipeline(
             std::string const& vertShaderName,
             std::string const& fragShaderName,
-            SwapchainComponents const& swapChain,
+            VkExtent2D const& extent,
+            VkRenderPass const& renderPass,
             std::vector<VkDescriptorSetLayout> const& descriptorSetLayout);
 
-    VkResult createCmdBuffers(SwapchainComponents const& swapChain);
+    VkResult createCmdBuffers(size_t const& swpchainImgCoun);
 
 private:
     VkCommandPool* cmdPool=nullptr;
