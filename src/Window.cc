@@ -40,9 +40,21 @@ Window::Window(size_t const& width,
                 clipNear, clipFar))
 {
     initCallbacks();
+
+
+    depthBuffer = Image::Image(
+            &logicalDev, &allocator, size(),
+            Image::findDepthFormat(dev),
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            nullopt,
+            nullopt,
+            VK_IMAGE_TILING_OPTIMAL, 1, VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_ASPECT_DEPTH_BIT);
+
     swapchainComponent = std::make_unique<SwapchainComponents>(
             &logicalDev, dev,
-            surface, std::make_pair(this->width, this->height));
+            surface, size(), depthBuffer.imgView);
 
     CHECK_VK_SUCCESS(createCommandPool(), ErrorMessages::CREATE_COMMAND_POOL_FAILED);
     CHECK_VK_SUCCESS(createTransferCmdPool(), "Cannot create transfer command pool!");
@@ -59,7 +71,7 @@ Window::Window(size_t const& width,
             helpers::searchPath("main.vert.spv"), helpers::searchPath("main.frag.spv"),
             swapchainComponent->swapchainExtent, swapchainComponent->imageCount(),
             swapchainComponent->renderPass,
-            std::vector<VkDescriptorSetLayout> {uniformData->descriptorSetLayout});
+            std::vector<VkDescriptorSetLayout> {uniformData->descriptorSetLayout}, true);
 
     for (size_t i=0; i < MAX_FRAMES_IN_FLIGHT; ++i)
     {
@@ -107,7 +119,7 @@ void Window::recordCommands()
     //begin buffer recording
     for (size_t i=0; i < swapchainComponent->imageCount(); ++i)
     {
-        auto const& cmdBuf = graphicsPipeline->cmdBuffers[i];
+        auto& cmdBuf = graphicsPipeline->cmdBuffers[i];
 
         VkCommandBufferBeginInfo beginInfo = {};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -126,12 +138,27 @@ void Window::recordCommands()
         renderPassBeginInfo.renderArea.offset = {0,0};
         renderPassBeginInfo.renderArea.extent = swapchainComponent->swapchainExtent;
 
-        VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
-        renderPassBeginInfo.clearValueCount = 1;
-        renderPassBeginInfo.pClearValues = &clearColor;
+        std::vector<VkClearValue> clearValues(2);
+        clearValues[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
+        clearValues[1].depthStencil = {1.0f, 0};
+
+        renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+        renderPassBeginInfo.pClearValues = clearValues.data();
 
         vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipeline);
+
+        /*
+        depthBuffer.cmdTransitionLayout(
+                VK_IMAGE_LAYOUT_UNDEFINED,
+                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+                0,
+                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                cmdBuf,
+                VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
+                */
 
         VkBuffer vertBuffers[] = { vertexBuffer.vertexBuffer };
         VkDeviceSize offsets[] = {0};
@@ -144,6 +171,7 @@ void Window::recordCommands()
                 graphicsPipeline->pipelineLayout,
                 0, 1, &(uniformData->descriptorSets[i]),
                 0, nullptr);
+
 
         // actual drawing command :)
         // vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
@@ -256,13 +284,24 @@ void Window::resetSwapChain()
 
     vkDeviceWaitIdle(logicalDev);
 
+    depthBuffer = Image::Image(
+            &logicalDev, &allocator, size(),
+            Image::findDepthFormat(dev),
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            nullopt,
+            nullopt,
+            VK_IMAGE_TILING_OPTIMAL, 1, VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_ASPECT_DEPTH_BIT);
+
     graphicsPipeline.reset();
     uniformData.reset();
     swapchainComponent.reset();
 
     swapchainComponent = std::make_unique<SwapchainComponents>(
             &logicalDev, dev,
-            surface, std::make_pair(this->width, this->height));
+            surface, std::make_pair(this->width, this->height),
+            depthBuffer.imgView);
 
     uniformData = std::make_unique<SwapchainImageBuffers>(
             &logicalDev, &allocator, dev, *swapchainComponent, img, 0
@@ -273,7 +312,8 @@ void Window::resetSwapChain()
             helpers::searchPath("main.vert.spv"), helpers::searchPath("main.frag.spv"),
             swapchainComponent->swapchainExtent, swapchainComponent->imageCount(),
             swapchainComponent->renderPass,
-            std::vector<VkDescriptorSetLayout> {uniformData->descriptorSetLayout});
+            std::vector<VkDescriptorSetLayout> {uniformData->descriptorSetLayout},
+            true);
 
     recordCommands();
 }
@@ -385,16 +425,6 @@ void Window::initBuffers()
     dcb.finish();
     CHECK_VK_SUCCESS(dcb.submit(transferQueue), ErrorMessages::FAILED_CANNOT_SUBMIT_QUEUE);
     CHECK_VK_SUCCESS(vkQueueWaitIdle(transferQueue), ErrorMessages::FAILED_WAIT_IDLE);
-
-    depthBuffer = Image::Image(
-            &logicalDev, &allocator, size(),
-            Image::findDepthFormat(dev),
-            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            nullopt,
-            nullopt,
-            VK_IMAGE_TILING_OPTIMAL, 1, VK_IMAGE_LAYOUT_UNDEFINED,
-            VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 void Window::setUniforms(UniformObjBuffer<UniformObjects>& bufObject)

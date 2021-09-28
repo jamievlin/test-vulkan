@@ -27,7 +27,8 @@ public:
             VkExtent2D const& extent,
             size_t const& swpchainImgCount,
             VkRenderPass const& renderPass,
-            std::vector<VkDescriptorSetLayout> const& descriptorSetLayout = {});
+            std::vector<VkDescriptorSetLayout> const& descriptorSetLayout = {},
+            bool enableDepthTest = true);
 
     GraphicsPipeline(GraphicsPipeline const&) = delete;
     GraphicsPipeline& operator=(GraphicsPipeline const&) = delete;
@@ -43,7 +44,8 @@ protected:
             std::string const& fragShaderName,
             VkExtent2D const& extent,
             VkRenderPass const& renderPass,
-            std::vector<VkDescriptorSetLayout> const& descriptorSetLayout);
+            std::vector<VkDescriptorSetLayout> const& descriptorSetLayout = {},
+            bool enableDepthTest = true);
 
     VkResult createCmdBuffers(size_t const& swpchainImgCoun);
 

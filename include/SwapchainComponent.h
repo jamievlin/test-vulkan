@@ -28,7 +28,8 @@ public:
             VkDevice* logicalDev,
             VkPhysicalDevice const& physDevice,
             VkSurfaceKHR const& surface,
-            std::pair<size_t, size_t> const& windowHeight
+            std::pair<size_t, size_t> const& windowSize,
+            std::optional<VkImageView> const& depthBufferImgView
             );
 
     SwapchainComponents(SwapchainComponents const&) = delete;
@@ -48,6 +49,6 @@ protected:
             std::pair<size_t, size_t> const& windowHeight,
             VkSurfaceKHR const& surface);
 
-    VkResult createRenderPasses();
+    VkResult createRenderPasses(VkPhysicalDevice const& physDevice);
     VkResult createDescriptorPool();
 };

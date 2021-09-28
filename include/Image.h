@@ -91,7 +91,8 @@ namespace Image
                 VkPipelineStageFlags const& dstStage,
                 VkAccessFlags const& srcAccessMask,
                 VkAccessFlags const& dstAccessMask,
-                VkCommandBuffer& cmdBuffer) const;
+                VkCommandBuffer& cmdBuffer,
+                VkImageAspectFlags const& aspectFlags=VK_IMAGE_ASPECT_COLOR_BIT) const;
 
         void cmdCopyFromBuffer(
                 Buffers::Buffer const& srcBuffer,
@@ -109,6 +110,16 @@ namespace Image
             bindingData.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
             return bindingData;
+        }
+
+        void dispose()
+        {
+            if (initialized())
+            {
+                vkDestroySampler(getLogicalDev(), baseSampler, nullptr);
+                vkDestroyImageView(getLogicalDev(), imgView, nullptr);
+                vmaDestroyImage(*allocator, img, allocation);
+            }
         }
 
         ~Image() override;

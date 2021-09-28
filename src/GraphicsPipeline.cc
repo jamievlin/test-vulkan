@@ -9,7 +9,8 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
         std::string const& fragShaderName,
         VkExtent2D const& extent,
         VkRenderPass const& renderPass,
-        std::vector<VkDescriptorSetLayout> const& descriptorSetLayout)
+        std::vector<VkDescriptorSetLayout> const& descriptorSetLayout,
+        bool enableDepthTest)
 {
     auto [vertShader, ret] = Shaders::createShaderModule(getLogicalDev(), vertShaderName);
     auto [fragShader, ret2] = Shaders::createShaderModule(getLogicalDev(), fragShaderName);
@@ -125,6 +126,24 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
     CHECK_VK_SUCCESS(vkCreatePipelineLayout(getLogicalDev(), &pipelineLayoutCreateInfo, nullptr, &pipelineLayout),
                      "Cannot create pipeline layout!");
 
+    VkPipelineDepthStencilStateCreateInfo depthStencil {};
+    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+
+    if (enableDepthTest)
+    {
+        depthStencil.depthTestEnable = VK_TRUE;
+        depthStencil.depthWriteEnable = VK_TRUE;
+        depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+        depthStencil.depthBoundsTestEnable = VK_FALSE;
+        depthStencil.minDepthBounds = 0.0f;
+        depthStencil.maxDepthBounds = 1.0f;
+
+        depthStencil.stencilTestEnable = VK_FALSE;
+        depthStencil.front = {};
+        depthStencil.back = {};
+    }
+
+
     VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
     pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     pipelineCreateInfo.stageCount = 2;
@@ -134,7 +153,7 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
     pipelineCreateInfo.pViewportState = &viewportState;
     pipelineCreateInfo.pRasterizationState = &rasterizerCreateInfo;
     pipelineCreateInfo.pMultisampleState = &multisampleInfo;
-    pipelineCreateInfo.pDepthStencilState = nullptr;
+    pipelineCreateInfo.pDepthStencilState = enableDepthTest ? &depthStencil : nullptr;
     pipelineCreateInfo.pColorBlendState = &colorBlendCreateInfo;
     pipelineCreateInfo.pDynamicState = nullptr;
 
@@ -163,11 +182,14 @@ GraphicsPipeline::GraphicsPipeline(
         VkExtent2D const& extent,
         size_t const& swpchainImgCount,
         VkRenderPass const& renderPass,
-        std::vector<VkDescriptorSetLayout> const& descriptorSetLayout) :
+        std::vector<VkDescriptorSetLayout> const& descriptorSetLayout,
+        bool enableDepthTest) :
         AVkGraphicsBase(device), cmdPool(cmdPool)
 {
     CHECK_VK_SUCCESS(
-            createGraphicsPipeline(vertShader, fragShader, extent, renderPass, descriptorSetLayout),
+            createGraphicsPipeline(
+                    vertShader, fragShader, extent, renderPass, descriptorSetLayout,
+                    enableDepthTest),
             ErrorMessages::CREATE_GRAPHICS_PIPELINE_FAILED);
 
     CHECK_VK_SUCCESS(
@@ -198,11 +220,19 @@ GraphicsPipeline::GraphicsPipeline(GraphicsPipeline&& graphicspipeline) noexcept
 
 GraphicsPipeline& GraphicsPipeline::operator=(GraphicsPipeline&& graphicspipeline) noexcept
 {
-    AVkGraphicsBase::operator=(std::move(graphicspipeline));
+    if (initialized())
+    {
+        vkFreeCommandBuffers(getLogicalDev(), *cmdPool,
+                             static_cast<uint32_t>(cmdBuffers.size()),
+                             cmdBuffers.data());
+        vkDestroyPipeline(getLogicalDev(), pipeline, nullptr);
+        vkDestroyPipelineLayout(getLogicalDev(), pipelineLayout, nullptr);
+    }
+
     pipeline = std::move(graphicspipeline.pipeline);
     pipelineLayout = std::move(graphicspipeline.pipelineLayout);
     cmdBuffers = std::move(graphicspipeline.cmdBuffers);
-
+    AVkGraphicsBase::operator=(std::move(graphicspipeline));
     return *this;
 }
 

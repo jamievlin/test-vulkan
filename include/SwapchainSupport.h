@@ -16,7 +16,8 @@ public:
     SwapchainImageSupport(
             VkDevice* logicalDev,
             VkRenderPass const& renderPass, VkExtent2D const& extent,
-            VkImage const& swapChainImage, VkFormat const& swapchainFormat);
+            VkImage const& swapChainImage, VkFormat const& swapchainFormat,
+            std::optional<VkImageView> const& depthBufferImgView);
 
     SwapchainImageSupport(SwapchainImageSupport const&) = delete;
     SwapchainImageSupport& operator=(SwapchainImageSupport const&) = delete;
@@ -29,7 +30,8 @@ public:
 protected:
     VkResult createFramebuffer(
             VkRenderPass const& renderPass,
-            VkExtent2D const& extent);
+            VkExtent2D const& extent,
+            std::optional<VkImageView> const& depthBufferImgView);
 
     VkResult createImageView(
             VkImage const& swapChainImage,

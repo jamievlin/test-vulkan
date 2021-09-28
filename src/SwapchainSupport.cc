@@ -4,7 +4,8 @@
 
 #include "SwapchainSupport.h"
 
-VkResult SwapchainImageSupport::createImageView(VkImage const& swapChainImage, VkFormat const& swapchainFormat)
+VkResult SwapchainImageSupport::createImageView(VkImage const& swapChainImage,
+                                                VkFormat const& swapchainFormat)
 {
     VkImageViewCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -26,16 +27,24 @@ VkResult SwapchainImageSupport::createImageView(VkImage const& swapChainImage, V
     return vkCreateImageView(getLogicalDev(), &createInfo, nullptr, &imageView);
 }
 
-VkResult SwapchainImageSupport::createFramebuffer(VkRenderPass const& renderPass, VkExtent2D const& extent)
+VkResult SwapchainImageSupport::createFramebuffer(
+        VkRenderPass const& renderPass, VkExtent2D const& extent,
+        std::optional<VkImageView> const& depthBufferImgView)
 {
     // creating frame buffer
-    VkImageView attachments[] = { imageView };
+    std::vector<VkImageView> attachments = {
+            imageView
+    };
+    if (depthBufferImgView.has_value())
+    {
+        attachments.push_back(depthBufferImgView.value());
+    }
 
     VkFramebufferCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     createInfo.renderPass = renderPass;
-    createInfo.attachmentCount = 1;
-    createInfo.pAttachments = attachments;
+    createInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+    createInfo.pAttachments = attachments.data();
     createInfo.width = extent.width;
     createInfo.height = extent.height;
     createInfo.layers = 1;
@@ -45,6 +54,11 @@ VkResult SwapchainImageSupport::createFramebuffer(VkRenderPass const& renderPass
 
 SwapchainImageSupport& SwapchainImageSupport::operator=(SwapchainImageSupport&& swpImgSupport) noexcept
 {
+    if (initialized())
+    {
+        vkDestroyFramebuffer(getLogicalDev(), frameBuffer, nullptr);
+        vkDestroyImageView(getLogicalDev(), imageView, nullptr);
+    }
     imageView = swpImgSupport.imageView;
     frameBuffer = swpImgSupport.frameBuffer;
     imagesInFlight = swpImgSupport.imagesInFlight;
@@ -69,13 +83,14 @@ SwapchainImageSupport::SwapchainImageSupport(SwapchainImageSupport&& swpImgSuppo
 
 SwapchainImageSupport::SwapchainImageSupport(VkDevice* logicalDev, VkRenderPass const& renderPass,
                                              VkExtent2D const& extent, VkImage const& swapChainImage,
-                                             VkFormat const& swapchainFormat): AVkGraphicsBase(logicalDev)
+                                             VkFormat const& swapchainFormat,
+                                             std::optional<VkImageView> const& depthBufferImgView): AVkGraphicsBase(logicalDev)
 {
     CHECK_VK_SUCCESS(
             createImageView(swapChainImage, swapchainFormat),
             "Cannot create image view!");
     CHECK_VK_SUCCESS(
-            createFramebuffer(renderPass, extent),
+            createFramebuffer(renderPass, extent, depthBufferImgView),
             "Cannot create framebuffer!");
 }
 

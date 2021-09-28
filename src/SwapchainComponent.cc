@@ -3,6 +3,7 @@
 //
 
 #include "SwapchainComponent.h"
+#include "Image.h"
 
 VkResult
 SwapchainComponents::initSwapChain(
@@ -73,20 +74,33 @@ SwapchainComponents::initSwapChain(
     return vkCreateSwapchainKHR(getLogicalDev(), &createInfo, nullptr, &swapChain);
 }
 
-VkResult SwapchainComponents::createRenderPasses()
+VkResult SwapchainComponents::createRenderPasses(VkPhysicalDevice const& physDevice)
 {
     VkAttachmentDescription colorAttachment = {};
     colorAttachment.format = swapchainFormat.format;
     colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-
     colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
     colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
     colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    VkAttachmentReference colorAttachmentRef = {};
+    colorAttachmentRef.attachment = 0;
+    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentDescription depthAttachment = {};
+    depthAttachment.format = Image::findDepthFormat(physDevice);
+    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    VkAttachmentReference depthAttachmentRef = {};
+    depthAttachmentRef.attachment = 1;
+    depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
     VkSubpassDependency dep = {};
     dep.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -96,19 +110,21 @@ VkResult SwapchainComponents::createRenderPasses()
     dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-    VkAttachmentReference colorAttachmentRef = {};
-    colorAttachmentRef.attachment = 0;
-    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
     VkSubpassDescription subpass = {};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentRef;
+    subpass.pDepthStencilAttachment = &depthAttachmentRef;
+
+    std::vector<VkAttachmentDescription> attachments = {
+            colorAttachment,
+            depthAttachment
+            };
 
     VkRenderPassCreateInfo renderPassCreateInfo = {};
     renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassCreateInfo.attachmentCount = 1;
-    renderPassCreateInfo.pAttachments = &colorAttachment;
+    renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+    renderPassCreateInfo.pAttachments = attachments.data();
     renderPassCreateInfo.subpassCount = 1;
     renderPassCreateInfo.pSubpasses = &subpass;
     renderPassCreateInfo.dependencyCount = 1;
@@ -119,11 +135,12 @@ VkResult SwapchainComponents::createRenderPasses()
 
 SwapchainComponents::SwapchainComponents(
         VkDevice* logicalDev, VkPhysicalDevice const& physDevice,
-        VkSurfaceKHR const& surface, std::pair<size_t, size_t> const& windowHeight) :
+        VkSurfaceKHR const& surface, std::pair<size_t, size_t> const& windowSize,
+        std::optional<VkImageView> const& depthBufferImgView) :
             AVkGraphicsBase(logicalDev), detail(physDevice, surface)
 {
     CHECK_VK_SUCCESS(
-            initSwapChain(physDevice, windowHeight, surface),
+            initSwapChain(physDevice, windowSize, surface),
             ErrorMessages::FAILED_CREATE_SWAP_CHAIN);
 
     // get swap chain image
@@ -132,15 +149,15 @@ SwapchainComponents::SwapchainComponents(
     swapChainImages.resize(imageCount);
     vkGetSwapchainImagesKHR(*logicalDev, swapChain, &imageCount, swapChainImages.data());
 
-    CHECK_VK_SUCCESS(createRenderPasses(), ErrorMessages::FAILED_CREATE_RENDER_PASS);
+    CHECK_VK_SUCCESS(createRenderPasses(physDevice), ErrorMessages::FAILED_CREATE_RENDER_PASS);
 
     std::transform(swapChainImages.begin(), swapChainImages.end(),
                    std::back_inserter(swapchainSupport),
-                   [this, &fmt=swapchainFormat.format](VkImage& swapChainImg)
+                   [this, &fmt=swapchainFormat.format, &depthBufferImgView](VkImage& swapChainImg)
                    {
                        return SwapchainImageSupport(
                                this->getLogicalDevPtr(), this->renderPass, this->swapchainExtent,
-                               swapChainImg, fmt);
+                               swapChainImg, fmt, depthBufferImgView);
                    });
 
     CHECK_VK_SUCCESS(createDescriptorPool(), ErrorMessages::FAILED_CANNOT_CREATE_DESC_POOL);
@@ -161,9 +178,14 @@ SwapchainComponents::SwapchainComponents(SwapchainComponents&& swpchainComp) noe
 
 SwapchainComponents& SwapchainComponents::operator=(SwapchainComponents&& swpchainComp) noexcept
 {
-    AVkGraphicsBase::operator=(std::move(swpchainComp));
-    detail = std::move(swpchainComp.detail);
+    if (initialized())
+    {
+        vkDestroyDescriptorPool(getLogicalDev(), descriptorPool, nullptr);
+        vkDestroyRenderPass(getLogicalDev(), renderPass, nullptr);
+        vkDestroySwapchainKHR(getLogicalDev(), swapChain, nullptr);
+    }
 
+    detail = std::move(swpchainComp.detail);
     swapChain = std::move(swpchainComp.swapChain);
     swapChainImages = std::move(swpchainComp.swapChainImages);
     swapchainFormat = std::move(swpchainComp.swapchainFormat);
@@ -172,6 +194,7 @@ SwapchainComponents& SwapchainComponents::operator=(SwapchainComponents&& swpcha
     renderPass = std::move(swpchainComp.renderPass);
     descriptorPool = std::move(swpchainComp.descriptorPool);
 
+    AVkGraphicsBase::operator=(std::move(swpchainComp));
     return *this;
 }
 

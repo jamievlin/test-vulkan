@@ -64,7 +64,7 @@ namespace Image
                 ErrorMessages::FAILED_CANNOT_CREATE_IMAGE);
 
         CHECK_VK_SUCCESS(
-                createBaseImageView(imgFormat, VK_IMAGE_VIEW_TYPE_2D),
+                createBaseImageView(imgFormat, VK_IMAGE_VIEW_TYPE_2D, aspectFlags),
                 ErrorMessages::FAILED_CANNOT_CREATE_IMAGE_VIEW)
 
         if (samplerCreateInfo.has_value())
@@ -92,7 +92,7 @@ namespace Image
                 ErrorMessages::FAILED_CANNOT_CREATE_IMAGE);
 
         CHECK_VK_SUCCESS(
-                createBaseImageView(imgFormat, VK_IMAGE_VIEW_TYPE_3D),
+                createBaseImageView(imgFormat, VK_IMAGE_VIEW_TYPE_3D, aspectFlags),
                 ErrorMessages::FAILED_CANNOT_CREATE_IMAGE_VIEW);
 
         if (samplerCreateInfo.has_value())
@@ -171,6 +171,9 @@ namespace Image
 
     Image& Image::Image::operator=(Image&& im) noexcept
     {
+        // destroy whatever's left here.
+        dispose();
+
         img = std::move(im.img);
         imgView = std::move(im.imgView);
         baseSampler = std::move(im.baseSampler);
@@ -217,7 +220,8 @@ namespace Image
     void Image::cmdTransitionLayout(VkImageLayout const& oldLayout, VkImageLayout const& newLayout,
                                            VkPipelineStageFlags const& srcStage, VkPipelineStageFlags const& dstStage,
                                            VkAccessFlags const& srcAccessMask, VkAccessFlags const& dstAccessMask,
-                                           VkCommandBuffer& cmdBuffer) const
+                                           VkCommandBuffer& cmdBuffer,
+                                           VkImageAspectFlags const& aspectFlags) const
     {
         VkImageMemoryBarrier barrier = {};
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -273,12 +277,7 @@ namespace Image
 
     Image::~Image()
     {
-        if (initialized())
-        {
-            vkDestroySampler(getLogicalDev(), baseSampler, nullptr);
-            vkDestroyImageView(getLogicalDev(), imgView, nullptr);
-            vmaDestroyImage(*allocator, img, allocation);
-        }
+        dispose();
     }
 
 }
