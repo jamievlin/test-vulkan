@@ -365,3 +365,8 @@ VkResult WindowBase::createAllocator()
 
     return vmaCreateAllocator(&createInfo, &allocator);
 }
+
+std::pair<uint32_t, uint32_t> WindowBase::size() const
+{
+    return {static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
+}

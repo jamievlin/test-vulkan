@@ -26,6 +26,9 @@ public:
 
     WindowBase(WindowBase const& win) = delete;
     WindowBase& operator=(WindowBase const& win) = delete;
+
+    [[nodiscard]]
+    std::pair<uint32_t, uint32_t> size() const;
 protected:
     VkResult initInstance();
 #if defined(ENABLE_VALIDATION_LAYERS)

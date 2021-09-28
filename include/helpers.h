@@ -6,6 +6,7 @@
 #include "common.h"
 #include <fstream>
 #include <vector>
+#include <utility>
 
 #include <png++/color.hpp>
 #include <png++/image.hpp>
@@ -25,6 +26,12 @@ namespace helpers
         uint64_t totalSize() const
         {
             return width * height * sizeof(PixelFmt);
+        }
+
+        [[nodiscard]]
+        std::pair<uint32_t, uint32_t> size() const
+        {
+            return { width, height };
         }
     };
     typedef img<uint32_t> img_r8g8b8a8;
