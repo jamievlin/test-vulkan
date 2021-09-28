@@ -44,7 +44,7 @@ Window::Window(size_t const& width,
     initBuffers();
 
     uniformData = std::make_unique<SwapchainImageBuffers>(
-            &logicalDev, &allocator, dev, *swapchainComponent, *img, 0
+            &logicalDev, &allocator, dev, *swapchainComponent, img, 0
     );
 
     graphicsPipeline = std::make_unique<GraphicsPipeline>(
@@ -81,17 +81,11 @@ int Window::mainLoop()
 
 Window::~Window()
 {
-    img.reset();
-    idxBuffer.reset();
-    vertexBuffer.reset();
-    frameSemaphores.clear();
     graphicsPipeline.reset();
-
-    uniformData.reset();
     swapchainComponent.reset();
+
     vkDestroyCommandPool(logicalDev, cmdTransferPool, nullptr);
     vkDestroyCommandPool(logicalDev, cmdPool, nullptr);
-
 }
 
 void Window::initCallbacks()
@@ -131,10 +125,10 @@ void Window::recordCommands()
         vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipeline);
 
-        VkBuffer vertBuffers[] = { vertexBuffer->vertexBuffer };
+        VkBuffer vertBuffers[] = { vertexBuffer.vertexBuffer };
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(cmdBuf, 0, 1, vertBuffers, offsets);
-        vkCmdBindIndexBuffer(cmdBuf, idxBuffer->vertexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(cmdBuf, idxBuffer.vertexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
         vkCmdBindDescriptorSets(
                 cmdBuf,
@@ -263,7 +257,7 @@ void Window::resetSwapChain()
             surface, std::make_pair(this->width, this->height));
 
     uniformData = std::make_unique<SwapchainImageBuffers>(
-            &logicalDev, &allocator, dev, *swapchainComponent, *img, 0
+            &logicalDev, &allocator, dev, *swapchainComponent, img, 0
     );
 
     graphicsPipeline = std::make_unique<GraphicsPipeline>(
@@ -321,7 +315,7 @@ void Window::initBuffers()
 
     stagingBuffer.loadData(verts.data());
 
-    vertexBuffer = std::make_unique<Buffers::VertexBuffer<Vertex>>(
+    vertexBuffer = Buffers::VertexBuffer<Vertex>(
             &logicalDev, &allocator, dev, verts.size(),
             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -333,7 +327,7 @@ void Window::initBuffers()
 
     stagingBufferIdx.loadData(idx.data());
 
-    idxBuffer = std::make_unique<Buffers::IndexBuffer>(
+    idxBuffer = Buffers::IndexBuffer(
             &logicalDev, &allocator, dev, idx.size(),
             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -363,7 +357,7 @@ void Window::initBuffers()
     samplerInfo.maxLod = 0.0f;
 
 
-    img = std::make_unique<Image::Image>(
+    img = Image::Image(
             &logicalDev, &allocator, std::pair<uint32_t,uint32_t>(image.width, image.height),
             VK_FORMAT_R8G8B8A8_SRGB,
             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -373,11 +367,11 @@ void Window::initBuffers()
     // submit in one batch
     DisposableCmdBuffer dcb(&logicalDev, &cmdTransferPool);
 
-    vertexBuffer->cmdCopyDataFrom(stagingBuffer, dcb.commandBuffer());
-    idxBuffer->cmdCopyDataFrom(stagingBufferIdx, dcb.commandBuffer());
-    img->cmdTransitionBeginCopy(dcb.commandBuffer());
-    img->cmdCopyFromBuffer(imageStgBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dcb.commandBuffer());
-    img->cmdTransitionEndCopy(dcb.commandBuffer());
+    vertexBuffer.cmdCopyDataFrom(stagingBuffer, dcb.commandBuffer());
+    idxBuffer.cmdCopyDataFrom(stagingBufferIdx, dcb.commandBuffer());
+    img.cmdTransitionBeginCopy(dcb.commandBuffer());
+    img.cmdCopyFromBuffer(imageStgBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dcb.commandBuffer());
+    img.cmdTransitionEndCopy(dcb.commandBuffer());
 
     dcb.finish();
     CHECK_VK_SUCCESS(dcb.submit(transferQueue), ErrorMessages::FAILED_CANNOT_SUBMIT_QUEUE);

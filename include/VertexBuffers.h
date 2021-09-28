@@ -55,6 +55,16 @@ namespace Buffers
 
         VertexBuffer(VertexBuffer const&) = delete;
         VertexBuffer& operator=(VertexBuffer const&) = delete;
+
+        VertexBuffer(VertexBuffer&& vb) noexcept : Buffer(std::move(vb))
+        {
+        }
+
+        VertexBuffer& operator=(VertexBuffer&& vb) noexcept
+        {
+            Buffer::operator=(std::move(vb));
+            return *this;
+        }
     };
 
     class IndexBuffer : public Buffer
@@ -102,5 +112,15 @@ namespace Buffers
 
         IndexBuffer(IndexBuffer const&) = delete;
         IndexBuffer& operator=(IndexBuffer const&) = delete;
+
+        IndexBuffer(IndexBuffer&& vb) noexcept : Buffer(std::move(vb))
+        {
+        }
+
+        IndexBuffer& operator=(IndexBuffer&& vb) noexcept
+        {
+            Buffer::operator=(std::move(vb));
+            return *this;
+        }
     };
 }

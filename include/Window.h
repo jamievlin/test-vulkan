@@ -36,10 +36,6 @@ protected:
     void initCallbacks();
 
 private:
-
-
-
-
     std::unique_ptr<SwapchainComponents> swapchainComponent;
     VkCommandPool cmdPool = VK_NULL_HANDLE;
     VkCommandPool cmdTransferPool = VK_NULL_HANDLE;
@@ -48,12 +44,12 @@ private:
     std::unique_ptr<GraphicsPipeline> graphicsPipeline;
 
     // buffers
-    std::unique_ptr<Buffers::VertexBuffer<Vertex>> vertexBuffer;
-    std::unique_ptr<Buffers::IndexBuffer> idxBuffer;
+    Buffers::VertexBuffer<Vertex> vertexBuffer;
+    Buffers::IndexBuffer idxBuffer;
 
     std::vector<FrameSemaphores> frameSemaphores;
     size_t currentFrame = 0;
-    std::unique_ptr<Image::Image> img;
+    Image::Image img;
     float totalTime = 0;
 
     float fovDegrees;
