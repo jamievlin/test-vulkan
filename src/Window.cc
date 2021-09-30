@@ -148,18 +148,6 @@ void Window::recordCommands()
         vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipeline);
 
-        /*
-        depthBuffer.cmdTransitionLayout(
-                VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-                0,
-                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                cmdBuf,
-                VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
-                */
-
         VkBuffer vertBuffers[] = { vertexBuffer.vertexBuffer };
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(cmdBuf, 0, 1, vertBuffers, offsets);
@@ -176,9 +164,19 @@ void Window::recordCommands()
         // actual drawing command :)
         // vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
         vkCmdDrawIndexed(cmdBuf, static_cast<uint32_t>(idx.size()), 1, 0, 0, 0);
-
         vkCmdEndRenderPass(cmdBuf);
 
+        depthBuffer.cmdTransitionLayout(
+                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                VK_IMAGE_LAYOUT_GENERAL,
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+                0,
+                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                cmdBuf,
+                Image::hasStencilComponent(Image::findDepthFormat(dev)) ?
+                VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
+                VK_IMAGE_ASPECT_DEPTH_BIT);
         CHECK_VK_SUCCESS(
                 vkEndCommandBuffer(cmdBuf),
                 "Cannot end command buffer!");
