@@ -8,13 +8,17 @@ cbuffer UBO
     float4x4 proj;
     float4x4 view;
     float4x4 model;
+    float4x4 modelInvDual;
 };
 
 PixelShaderInput main(VertexInput vi)
 {
     PixelShaderInput psi;
-    psi.scrPos = float4(vi.inPosition,1) * model * view * proj;
-    psi.inColor = vi.inColor;
+    float4x4 MVP = model * view * proj;
+    psi.scrPos = float4(vi.inPosition,1) * MVP;
+
+    float4 inNormalZ = float4(vi.inNormal,0) * modelInvDual;
+    psi.inNormal = inNormalZ.xyz;
     psi.outTexCoord = vi.texCoord;
     return psi;
 }

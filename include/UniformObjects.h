@@ -22,6 +22,9 @@ struct UniformObjects
     VEC4_ALIGN
     glm::mat4 model;
 
+    VEC4_ALIGN
+    glm::mat4 modelInvDual;
+
     static VkDescriptorSetLayoutBinding descriptorSetLayout(uint32_t binding=0)
     {
         VkDescriptorSetLayoutBinding uboLayout = {};

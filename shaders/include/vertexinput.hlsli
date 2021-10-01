@@ -4,7 +4,7 @@ struct VertexInput
     float3 inPosition : VTX_INPUT;
 
     [[vk::location(1)]]
-    float3 inColor;
+    float3 inNormal;
 
     [[vk::location(2)]]
     float2 texCoord;

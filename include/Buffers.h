@@ -41,6 +41,14 @@ namespace Buffers
         uint32_t getSize() const;
 
         VkResult loadData(void const* data);
+
+        /**
+         *
+         * @param data vectors of <src, offset, size>
+         * @return vkMapMemory success or not
+         */
+        VkResult loadData(std::vector<std::tuple<void const*, size_t, size_t>> const& data);
+
         void copyDataFrom(VkBuffer const& src, VkQueue& transferQueue, VkCommandPool& transferCmdPool) const;
         void cmdCopyDataFrom(VkBuffer const& src, VkCommandBuffer& transferBuffer) const;
 

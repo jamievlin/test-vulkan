@@ -5,6 +5,7 @@
 #pragma once
 #include "common.h"
 #include "WindowBase.h"
+#include "Mesh.h"
 
 class Window : public WindowBase
 {
@@ -56,5 +57,7 @@ private:
     float fovDegrees;
     float clipNear, clipFar;
     glm::mat4 projectMat;
+
+    std::unique_ptr<Mesh> mesh;
 
 };

@@ -195,6 +195,21 @@ namespace Buffers
         cmdCopyDataFrom(src.vertexBuffer, transferBuffer);
     }
 
+    VkResult Buffer::loadData(std::vector<std::tuple<void const*, size_t, size_t>> const& data)
+    {
+        void* inSrc = nullptr;
+        auto ret = vmaMapMemory(*allocator, allocation, &inSrc);
+        if (ret == VK_SUCCESS)
+        {
+            for (auto const& [src, offset, sz] : data)
+            {
+                memcpy(reinterpret_cast<uint8_t*>(inSrc) + offset, src, sz);
+            }
+            vmaUnmapMemory(*allocator, allocation);
+        }
+        return ret;
+    }
+
     StagingBuffer::StagingBuffer(VkDevice* dev, VmaAllocator* allocator, VkPhysicalDevice const& physicalDev,
                                  size_t const& bufferSize, VkMemoryPropertyFlags const& memoryFlags,
                                  optUint32Set const& usedQueues) :

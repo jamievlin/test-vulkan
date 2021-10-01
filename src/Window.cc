@@ -5,28 +5,10 @@
 #include "WindowBase.h"
 #include "DisposableCmdBuffer.h"
 #include "helpers.h"
+#include "Mesh.h"
 
 #include <utility>
 #include <chrono>
-
-const std::vector<Vertex> verts = {
-        {{0.f, 0.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f}},
-        {{0.5f, 0.f, 0.f}, {0.f, 1.f, 0.f}, {1.f, 0.f}},
-        {{0.f, 0.5f, 0.f}, {0.f, 0.f, 1.f}, {0.f, 1.f}},
-        {{0.5f, 0.5f, 0.f}, {0.5f, 0.5f, 0.5f}, {1.f, 1.f}},
-
-        {{0.f, 0.f, .2f}, {1.f, 0.f, 0.f}, {0.f, 0.f}},
-        {{0.5f, 0.f, .2f}, {0.f, 1.f, 0.f}, {1.f, 0.f}},
-        {{0.f, 0.5f, .2f}, {0.f, 0.f, 1.f}, {0.f, 1.f}},
-        {{0.5f, 0.5f, .2f}, {0.5f, 0.5f, 0.5f}, {1.f, 1.f}},
-};
-
-const std::vector<uint32_t> idx = {
-        4,5,6,
-        5,7,6,
-        0,1,2,
-        1,3,2,
-};
 
 Window::Window(size_t const& width,
                size_t const& height,
@@ -58,6 +40,7 @@ Window::Window(size_t const& width,
 
     CHECK_VK_SUCCESS(createCommandPool(), ErrorMessages::CREATE_COMMAND_POOL_FAILED);
     CHECK_VK_SUCCESS(createTransferCmdPool(), "Cannot create transfer command pool!");
+    mesh = std::make_unique<Mesh>(&logicalDev, &allocator, &dev, helpers::searchPath("assets/teapot.obj"));
 
     // for vertex buffer
     initBuffers();
@@ -77,6 +60,8 @@ Window::Window(size_t const& width,
     {
         frameSemaphores.emplace_back(&logicalDev);
     }
+
+
 }
 
 int Window::mainLoop()
@@ -148,10 +133,10 @@ void Window::recordCommands()
         vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipeline);
 
-        VkBuffer vertBuffers[] = { vertexBuffer.vertexBuffer };
+        VkBuffer vertBuffers[] = { mesh->buf.vertexBuffer };
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(cmdBuf, 0, 1, vertBuffers, offsets);
-        vkCmdBindIndexBuffer(cmdBuf, idxBuffer.vertexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(cmdBuf, mesh->buf.vertexBuffer, mesh->idxOffset(), VK_INDEX_TYPE_UINT32);
 
         vkCmdBindDescriptorSets(
                 cmdBuf,
@@ -163,7 +148,7 @@ void Window::recordCommands()
 
         // actual drawing command :)
         // vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
-        vkCmdDrawIndexed(cmdBuf, static_cast<uint32_t>(idx.size()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(cmdBuf, static_cast<uint32_t>(mesh->idxCount()), 1, 0, 0, 0);
         vkCmdEndRenderPass(cmdBuf);
 
         depthBuffer.cmdTransitionLayout(
@@ -355,29 +340,7 @@ VkResult Window::createTransferCmdPool()
 
 void Window::initBuffers()
 {
-    Buffers::StagingBuffer stagingBuffer(
-            &logicalDev, &allocator, dev, verts.size() * sizeof(Vertex),
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            queueFamilyIndex.queuesForTransfer());
-
-    stagingBuffer.loadData(verts.data());
-
-    vertexBuffer = Buffers::VertexBuffer<Vertex>(
-            &logicalDev, &allocator, dev, verts.size(),
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-    Buffers::StagingBuffer stagingBufferIdx(
-            &logicalDev, &allocator, dev, idx.size() * sizeof(uint32_t),
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            queueFamilyIndex.queuesForTransfer());
-
-    stagingBufferIdx.loadData(idx.data());
-
-    idxBuffer = Buffers::IndexBuffer(
-            &logicalDev, &allocator, dev, idx.size(),
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    auto meshStgBuffer = mesh->stagingBuffer(queueFamilyIndex.queuesForTransfer());
 
     helpers::img_r8g8b8a8 image = helpers::fromPng(helpers::searchPath("assets/smile.png"));
     Buffers::StagingBuffer imageStgBuffer(
@@ -413,9 +376,9 @@ void Window::initBuffers()
 
     // submit in one batch
     DisposableCmdBuffer dcb(&logicalDev, &cmdTransferPool);
-
-    vertexBuffer.cmdCopyDataFrom(stagingBuffer, dcb.commandBuffer());
-    idxBuffer.cmdCopyDataFrom(stagingBufferIdx, dcb.commandBuffer());
+    mesh->buf.cmdCopyDataFrom(*meshStgBuffer, dcb.commandBuffer());
+    // vertexBuffer.cmdCopyDataFrom(stagingBuffer, dcb.commandBuffer());
+    // idxBuffer.cmdCopyDataFrom(stagingBufferIdx, dcb.commandBuffer());
     img.cmdTransitionBeginCopy(dcb.commandBuffer());
     img.cmdCopyFromBuffer(imageStgBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dcb.commandBuffer());
     img.cmdTransitionEndCopy(dcb.commandBuffer());
@@ -428,12 +391,22 @@ void Window::initBuffers()
 void Window::setUniforms(UniformObjBuffer<UniformObjects>& bufObject)
 {
     glm::vec3 Zup(0,0,1);
+    glm::vec3 Yup(0,1,0);
     glm::vec3 Xup(1,0,0);
     glm::vec3 O(0,0,0);
 
     UniformObjects ubo = {};
+
+    glm::mat4 baseMat = glm::scale(glm::transpose(glm::mat4(
+            0, 0, 1, 0,
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 0, 1
+    )), glm::vec3(0.15f));
     ubo.time = totalTime / 1000.f;
-    ubo.model = glm::rotate(glm::mat4(1.f), totalTime / 1000.0f, Zup);
+    ubo.model = glm::rotate(baseMat, totalTime / 1000.0f, Yup);
+    ubo.modelInvDual = glm::inverseTranspose(ubo.model);
+
     ubo.view = glm::lookAt(
             glm::vec3(1.f, -1.f, 1.f),
             O,
