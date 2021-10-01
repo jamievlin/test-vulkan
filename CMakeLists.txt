@@ -49,8 +49,11 @@ find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(libpng REQUIRED)
 
-list(APPEND INCLUDE_DIRS ${Vulkan_INCLUDE_DIRS})
-set(LIBRARIES ${Vulkan_LIBRARIES} glfw png)
+find_package(Boost REQUIRED
+        COMPONENTS regex)
+
+list(APPEND INCLUDE_DIRS ${Vulkan_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
+set(LIBRARIES ${Vulkan_LIBRARIES} ${Boost_LIBRARIES} glfw png)
 
 # Shader compilation
 file(GLOB SHADERS **/*.hlsl **/*.glsl)
