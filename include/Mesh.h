@@ -17,10 +17,7 @@ public:
     Buffers::Buffer buf;
 
     Mesh() = default;
-    ~Mesh()
-    {
-
-    }
+    ~Mesh() = default;
 
     Mesh(VkDevice* logicalDev, VmaAllocator* allocator, VkPhysicalDevice* physDev,
          std::string const& objFile) : AVkGraphicsBase(logicalDev), allocator(allocator), physDev(physDev)
@@ -60,7 +57,7 @@ public:
             else if (mode == "f")
             {
                 std::string tmpindex;
-                uint32_t currIndex = verts.size();
+                uint32_t currIndex = static_cast<uint32_t>(verts.size());
                 int counter = 0;
 
                 while (sstr >> tmpindex)
@@ -125,6 +122,32 @@ public:
 
         stg_ptr->loadData({{verts.data(), 0, vertSize}, {indices.data(), vertSize, idxSize}});
         return stg_ptr;
+    }
+
+    Mesh(Mesh const&) = delete;
+    Mesh& operator=(Mesh const&) = delete;
+
+    Mesh(Mesh&& mesh) noexcept :
+        AVkGraphicsBase(std::move(mesh)),
+        buf(std::move(mesh.buf)),
+        verts(std::move(mesh.verts)),
+        indices(std::move(mesh.indices)),
+        allocator(std::move(mesh.allocator)),
+        physDev(std::move(mesh.physDev))
+    {
+
+    }
+
+    Mesh& operator=(Mesh&& mesh) noexcept
+    {
+        buf = std::move(mesh.buf);
+        verts = std::move(mesh.verts);
+        indices = std::move(mesh.indices);
+
+        allocator = std::move(mesh.allocator);
+        physDev = std::move(mesh.physDev);
+        AVkGraphicsBase::operator=(std::move(mesh));
+        return *this;
     }
 private:
     std::vector<NVertex> verts;

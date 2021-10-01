@@ -4,6 +4,8 @@
 
 #include "helpers.h"
 
+constexpr char const* SEARCH_PATHS_ENV = "SEARCH_PATHS";
+
 namespace helpers
 {
     std::string searchPath(std::string const& file)
@@ -14,13 +16,13 @@ namespace helpers
         }
 
         size_t requiredSize;
-        getenv_s(&requiredSize, nullptr, 0, "SEARCH_PATHS");
+        getenv_s(&requiredSize, nullptr, 0, SEARCH_PATHS_ENV);
 
         if (requiredSize > 0)
         {
             std::vector<char> buffer;
             buffer.resize(requiredSize);
-            getenv_s(&requiredSize, buffer.data(), requiredSize, "SEARCH_PATHS");
+            getenv_s(&requiredSize, buffer.data(), requiredSize, SEARCH_PATHS_ENV);
 
             char* nextToken;
             char* out = strtok_s(buffer.data(), ";", &nextToken);

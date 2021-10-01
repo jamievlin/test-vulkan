@@ -40,7 +40,7 @@ Window::Window(size_t const& width,
 
     CHECK_VK_SUCCESS(createCommandPool(), ErrorMessages::CREATE_COMMAND_POOL_FAILED);
     CHECK_VK_SUCCESS(createTransferCmdPool(), "Cannot create transfer command pool!");
-    mesh = std::make_unique<Mesh>(&logicalDev, &allocator, &dev, helpers::searchPath("assets/teapot.obj"));
+    mesh = Mesh(&logicalDev, &allocator, &dev, helpers::searchPath("assets/teapot.obj"));
 
     // for vertex buffer
     initBuffers();
@@ -133,10 +133,10 @@ void Window::recordCommands()
         vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipeline);
 
-        VkBuffer vertBuffers[] = { mesh->buf.vertexBuffer };
+        VkBuffer vertBuffers[] = { mesh.buf.vertexBuffer };
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(cmdBuf, 0, 1, vertBuffers, offsets);
-        vkCmdBindIndexBuffer(cmdBuf, mesh->buf.vertexBuffer, mesh->idxOffset(), VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(cmdBuf, mesh.buf.vertexBuffer, mesh.idxOffset(), VK_INDEX_TYPE_UINT32);
 
         vkCmdBindDescriptorSets(
                 cmdBuf,
@@ -148,7 +148,7 @@ void Window::recordCommands()
 
         // actual drawing command :)
         // vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
-        vkCmdDrawIndexed(cmdBuf, static_cast<uint32_t>(mesh->idxCount()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(cmdBuf, static_cast<uint32_t>(mesh.idxCount()), 1, 0, 0, 0);
         vkCmdEndRenderPass(cmdBuf);
 
         depthBuffer.cmdTransitionLayout(
@@ -340,7 +340,7 @@ VkResult Window::createTransferCmdPool()
 
 void Window::initBuffers()
 {
-    auto meshStgBuffer = mesh->stagingBuffer(queueFamilyIndex.queuesForTransfer());
+    auto meshStgBuffer = mesh.stagingBuffer(queueFamilyIndex.queuesForTransfer());
 
     helpers::img_r8g8b8a8 image = helpers::fromPng(helpers::searchPath("assets/smile.png"));
     Buffers::StagingBuffer imageStgBuffer(
@@ -376,7 +376,7 @@ void Window::initBuffers()
 
     // submit in one batch
     DisposableCmdBuffer dcb(&logicalDev, &cmdTransferPool);
-    mesh->buf.cmdCopyDataFrom(*meshStgBuffer, dcb.commandBuffer());
+    mesh.buf.cmdCopyDataFrom(*meshStgBuffer, dcb.commandBuffer());
     // vertexBuffer.cmdCopyDataFrom(stagingBuffer, dcb.commandBuffer());
     // idxBuffer.cmdCopyDataFrom(stagingBufferIdx, dcb.commandBuffer());
     img.cmdTransitionBeginCopy(dcb.commandBuffer());

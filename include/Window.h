@@ -58,6 +58,6 @@ private:
     float clipNear, clipFar;
     glm::mat4 projectMat;
 
-    std::unique_ptr<Mesh> mesh;
+    Mesh mesh;
 
 };
