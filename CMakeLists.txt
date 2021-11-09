@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.15)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.21)
 project(vkTest)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -47,7 +47,14 @@ endif()
 
 find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
-find_package(libpng REQUIRED)
+
+if (WIN32)
+    find_package(libpng REQUIRED)
+endif()
+
+if (UNIX)
+    list(APPEND INCLUDE_DIRS "./contrib/vkmemalloc/include")
+endif()
 
 find_package(Boost REQUIRED
         COMPONENTS regex)
@@ -79,18 +86,24 @@ foreach(shaderFile IN LISTS SHADERS)
     get_filename_component(shaderStageDot ${shaderNameExt} LAST_EXT)
     string(SUBSTRING ${shaderStageDot} 1 -1 shaderStage)
     set(shaderOutName ${shaderNameExt}.spv)
+    set(shaderDepFile ${shaderOutName}.d)
     list(APPEND SHADER_OUTFILES ${shaderOutName})
 
     # using glslc
     set(GLSLC_CMD glslc
             ${GLSLC_FULL_FLAGS}
+            -MD
             -fshader-stage=${shaderStage}
             ${shaderFile}
-            -o ${shaderOutName})
+            -o ${shaderOutName}
+            -MF ${shaderDepFile})
+
     add_custom_command(
             OUTPUT ${shaderOutName}
             COMMAND ${GLSLC_CMD}
+            BYPRODUCTS ${shaderDepFile}
             MAIN_DEPENDENCY ${shaderFile}
+            DEPFILE ${shaderDepFile}
     )
 endforeach()
 
