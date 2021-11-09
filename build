@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+mkdir -p buildlinux
+bash -c "cd buildlinux && cmake -G\"Unix Makefiles\" .. && make"
