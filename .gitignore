@@ -131,3 +131,5 @@ assets/*.png
 assets/*.obj
 
 # End of https://www.toptal.com/developers/gitignore/api/cmake,visualstudiocode,clion+all
+
+buildlinux/*
