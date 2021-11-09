@@ -58,6 +58,8 @@ private:
     float clipNear, clipFar;
     glm::mat4 projectMat;
 
+    glm::vec3 cameraPos;
+
     Mesh mesh;
 
 };

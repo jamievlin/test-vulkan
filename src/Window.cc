@@ -19,7 +19,8 @@ Window::Window(size_t const& width,
         projectMat(glm::perspective(
                 glm::radians(fovDegrees),
                 static_cast<float>(width) / static_cast<float>(height),
-                clipNear, clipFar))
+                clipNear, clipFar)),
+        cameraPos(1.f, -1.f, 1.f)
 {
     initCallbacks();
 
@@ -405,13 +406,14 @@ void Window::setUniforms(UniformObjBuffer<UniformObjects>& bufObject)
     )), glm::vec3(0.15f));
     ubo.time = totalTime / 1000.f;
     ubo.model = glm::rotate(baseMat, totalTime / 1000.0f, Yup);
-    ubo.modelInvDual = glm::inverseTranspose(ubo.model);
 
     ubo.view = glm::lookAt(
-            glm::vec3(1.f, -1.f, 1.f),
+            cameraPos,
             O,
             glm::vec3(1.f, -1.f, -1.f));
     ubo.proj = projectMat;
+    ubo.cameraPos = glm::vec4(cameraPos, 1);
+    ubo.modelInvDual = glm::inverseTranspose(ubo.model);
 
     CHECK_VK_SUCCESS(bufObject.loadData(ubo), "Cannot set uniforms!");
 }
