@@ -15,9 +15,11 @@ namespace helpers
             return file;
         }
 
+        // strtok_s is not C99 standard in Linux
+
+#if defined(_WIN32)
         size_t requiredSize;
         getenv_s(&requiredSize, nullptr, 0, SEARCH_PATHS_ENV);
-
         if (requiredSize > 0)
         {
             std::vector<char> buffer;
@@ -32,10 +34,24 @@ namespace helpers
                 {
                     return std::string(out) + "/" + file;
                 }
-
                 out = strtok_s(nullptr, ";", &nextToken);
             }
         }
+#else
+        char* base_buffer = getenv(SEARCH_PATHS_ENV);
+        auto base_buffer_data = std::make_unique<char[]>(strlen(base_buffer) + 1);
+
+        char* out = strtok(base_buffer_data.get(), ";");
+        out = strtok(nullptr, out);
+        while (out)
+        {
+            if (fileExists(out, file))
+            {
+                return std::string(out) + "/" + file;
+            }
+            out = strtok(nullptr, out);
+        }
+#endif
         return {};
     }
 

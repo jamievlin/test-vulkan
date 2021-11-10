@@ -7,6 +7,7 @@
 #include <fstream>
 #include <vector>
 #include <utility>
+#include <cstdlib>
 
 #include <png++/color.hpp>
 #include <png++/image.hpp>
