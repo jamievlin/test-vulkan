@@ -72,7 +72,7 @@ elseif (${CMAKE_BUILD_TYPE} MATCHES Release)
     list(APPEND GLSLC_FLAGS -O)
 endif()
 
-set(GLSLC_TARGETS --target-spv=spv1.5 --target-env=vulkan1.2)
+set(GLSLC_TARGETS --target-env=vulkan1.1)
 set(GLSLC_INCLUDE_PATH shaders/ shaders/include/)
 
 set(GLSLC_FULL_FLAGS ${GLSLC_FLAGS} ${GLSLC_TARGETS})
