@@ -133,12 +133,6 @@ void Window::recordCommands()
 
         vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipeline);
-
-        VkBuffer vertBuffers[] = { mesh.buf.vertexBuffer };
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(cmdBuf, 0, 1, vertBuffers, offsets);
-        vkCmdBindIndexBuffer(cmdBuf, mesh.buf.vertexBuffer, mesh.idxOffset(), VK_INDEX_TYPE_UINT32);
-
         vkCmdBindDescriptorSets(
                 cmdBuf,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -147,6 +141,10 @@ void Window::recordCommands()
                 0, nullptr);
 
 
+        VkBuffer vertBuffers[] = { mesh.buf.vertexBuffer };
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(cmdBuf, 0, 1, vertBuffers, offsets);
+        vkCmdBindIndexBuffer(cmdBuf, mesh.buf.vertexBuffer, mesh.idxOffset(), VK_INDEX_TYPE_UINT32);
         // actual drawing command :)
         // vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
         vkCmdDrawIndexed(cmdBuf, static_cast<uint32_t>(mesh.idxCount()), 1, 0, 0, 0);
