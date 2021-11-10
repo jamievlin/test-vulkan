@@ -6,26 +6,15 @@
 #include "common.h"
 #include "Buffers.h"
 
-#define VEC4_ALIGN alignas(sizeof(glm::vec4))
+
 
 struct UniformObjects
 {
-    VEC4_ALIGN
     float time;
-
-    VEC4_ALIGN
-    glm::vec4 cameraPos;
-
-    VEC4_ALIGN
+    VEC4_ALIGN glm::vec4 cameraPos;
     glm::mat4 proj;
-
-    VEC4_ALIGN
     glm::mat4 view;
-
-    VEC4_ALIGN
     glm::mat4 model;
-
-    VEC4_ALIGN
     glm::mat4 modelInvDual;
 
     static VkDescriptorSetLayoutBinding descriptorSetLayout(uint32_t binding=0);

@@ -41,9 +41,9 @@ namespace Buffers
         uint32_t getSize() const;
 
         VkResult loadData(void const* data);
+        VkResult loadData(void const* data, uint32_t const& offset, uint32_t const& dataSize);
 
         /**
-         *
          * @param data vectors of <src, offset, size>
          * @return vkMapMemory success or not
          */
@@ -69,6 +69,7 @@ namespace Buffers
     private:
         VmaAllocator* allocator = nullptr;
         size_t size = -1;
+        void* mappedMemory = nullptr;
     };
 
     class StagingBuffer : public Buffer

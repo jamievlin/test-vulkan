@@ -33,10 +33,12 @@ protected:
 
     void initBuffers();
     void setUniforms(UniformObjBuffer<UniformObjects>& bufObject);
+    void setLights(StorageBufferArray<Light>& storageObj);
 
     void initCallbacks();
 
 private:
+    bool running = true;
     std::unique_ptr<SwapchainComponents> swapchainComponent;
     VkCommandPool cmdPool = VK_NULL_HANDLE;
     VkCommandPool cmdTransferPool = VK_NULL_HANDLE;

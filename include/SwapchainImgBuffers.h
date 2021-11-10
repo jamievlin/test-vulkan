@@ -7,12 +7,15 @@
 #include "SwapchainComponent.h"
 #include "Image.h"
 #include "UniformObjects.h"
+#include "Lights.h"
+#include "StorageBufferArray.h"
 
 class SwapchainImageBuffers : public AVkGraphicsBase
 {
 public:
     VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
     std::vector<UniformObjBuffer<UniformObjects>> unifBuffers;
+    std::vector<StorageBufferArray<Light>> lightSBOs;
     std::vector<VkDescriptorSet> descriptorSets;
 
     SwapchainImageBuffers() = default;

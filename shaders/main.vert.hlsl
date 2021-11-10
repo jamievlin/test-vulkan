@@ -6,11 +6,14 @@
 PixelShaderInput main(VertexInput vi)
 {
     PixelShaderInput psi;
-    float4x4 MVP = model * view * proj;
-    psi.scrPos = float4(vi.inPosition,1) * MVP;
+    float4 inPos4 = float4(vi.inPosition,1);
 
-    float4 inNormalZ = float4(vi.inNormal,0) * modelInvDual;
+    float4x4 MVP = mul(proj, mul(view, model));
+    psi.scrPos = mul(MVP, inPos4);
+
+    float4 inNormalZ = mul(modelInvDual, float4(vi.inNormal,0));
     psi.inNormal = inNormalZ.xyz;
     psi.outTexCoord = vi.texCoord;
+    psi.worldPos = mul(model, inPos4).xyz;
     return psi;
 }

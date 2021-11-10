@@ -71,10 +71,14 @@ int Window::mainLoop()
     auto lastTime = std::chrono::high_resolution_clock::now();
     while (not glfwWindowShouldClose(window))
     {
+        float timepassed = 0;
         auto newTime = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<float, std::milli> duration = newTime - lastTime;
-
-        updateFrame(duration.count());
+        if (running)
+        {
+            timepassed = std::chrono::duration<float, std::milli>(newTime - lastTime).count();
+        }
+        running = true;
+        updateFrame(timepassed);
         glfwPollEvents();
         drawFrame();
 
@@ -227,6 +231,7 @@ void Window::drawFrame()
     // an infinite wait (as there's nothing to render and /signal/ the fence).
 
     setUniforms((*uniformData)[imgIndex].first);
+    setLights(uniformData->lightSBOs[imgIndex]);
     vkResetFences(logicalDev, 1, &inFlightFence);
     CHECK_VK_SUCCESS(
             vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence),
@@ -259,6 +264,7 @@ void Window::drawFrame()
 
 void Window::resetSwapChain()
 {
+    running = false;
     while (this->width == 0 && this->height == 0)
     {
         glfwWaitEvents();
@@ -414,6 +420,24 @@ void Window::setUniforms(UniformObjBuffer<UniformObjects>& bufObject)
     ubo.modelInvDual = glm::inverseTranspose(ubo.model);
 
     CHECK_VK_SUCCESS(bufObject.loadData(ubo), "Cannot set uniforms!");
+}
+
+void Window::setLights(StorageBufferArray<Light>& storageObj)
+{
+    float t = sin(totalTime / 500);
+
+    std::vector<Light> li(2);
+    li[0].lightType = LightType::POINT_LIGHT;
+    li[0].position = glm::vec4(t,2,2,1);
+    li[0].color = glm::vec4(1,0,1,1) * (t + 1);
+    li[0].intensity = 5.f;
+
+    li[1].lightType = LightType::POINT_LIGHT;
+    li[1].position = glm::vec4(2,t,3,1);
+    li[1].color = glm::vec4(0,1,1,1);
+    li[1].intensity = 2.f;
+
+    storageObj.loadDataAndSetSize(li);
 }
 
 void Window::updateFrame(float const& deltaTime)

@@ -72,6 +72,10 @@ namespace Buffers
     {
         if (initialized())
         {
+            if (mappedMemory)
+            {
+                vmaUnmapMemory(*allocator, allocation);
+            }
             vmaDestroyBuffer(*allocator, vertexBuffer, allocation);
         }
     }
@@ -127,14 +131,20 @@ namespace Buffers
 
     VkResult Buffer::loadData(void const* data)
     {
-        void* inSrc = nullptr;
-        auto ret = vmaMapMemory(*allocator, allocation, &inSrc);
-        if (ret == VK_SUCCESS)
+        return loadData(data, 0, size);
+    }
+
+    VkResult Buffer::loadData(void const* data, uint32_t const& offset, uint32_t const& dataSize)
+    {
+        if (mappedMemory == nullptr)
         {
-            memcpy(inSrc, data, size);
-            vmaUnmapMemory(*allocator, allocation);
+            CHECK_VK_SUCCESS(
+                    vmaMapMemory(*allocator, allocation, &mappedMemory),
+                    "Cannot map buffer memory!");
         }
-        return ret;
+        memcpy(reinterpret_cast<uint8_t*>(mappedMemory) + offset, data, dataSize);
+
+        return VK_SUCCESS;
     }
 
     void Buffer::cmdCopyDataFrom(VkBuffer const& src,
@@ -197,17 +207,18 @@ namespace Buffers
 
     VkResult Buffer::loadData(std::vector<std::tuple<void const*, size_t, size_t>> const& data)
     {
-        void* inSrc = nullptr;
-        auto ret = vmaMapMemory(*allocator, allocation, &inSrc);
-        if (ret == VK_SUCCESS)
+        if (mappedMemory == nullptr)
         {
-            for (auto const& [src, offset, sz] : data)
-            {
-                memcpy(reinterpret_cast<uint8_t*>(inSrc) + offset, src, sz);
-            }
-            vmaUnmapMemory(*allocator, allocation);
+            CHECK_VK_SUCCESS(
+                    vmaMapMemory(*allocator, allocation, &mappedMemory),
+                    "Cannot map buffer memory!");
         }
-        return ret;
+        for (auto const& [src, offset, sz] : data)
+        {
+            memcpy(reinterpret_cast<uint8_t*>(mappedMemory) + offset, src, sz);
+        }
+        return VK_SUCCESS;
+
     }
 
     StagingBuffer::StagingBuffer(VkDevice* dev, VmaAllocator* allocator, VkPhysicalDevice const& physicalDev,
