@@ -218,18 +218,25 @@ VkResult SwapchainComponents::createDescriptorPool()
 {
 
 
-    VkDescriptorPoolSize poolSize[2] = {{}, {}};
+    VkDescriptorPoolSize poolSize[4] = {{}, {}, {}, {}};
     poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSize[0].descriptorCount = imageCount();
 
     poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSize[1].descriptorCount = imageCount();
 
+    poolSize[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    poolSize[2].descriptorCount = imageCount();
+
+    poolSize[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    poolSize[3].descriptorCount = imageCount();
+
+
     VkDescriptorPoolCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    createInfo.poolSizeCount = 2;
+    createInfo.poolSizeCount = 4;
     createInfo.pPoolSizes = poolSize;
-    createInfo.maxSets = imageCount();
+    createInfo.maxSets = 3 * imageCount();
 
     return vkCreateDescriptorPool(getLogicalDev(), &createInfo, nullptr, &descriptorPool);
 

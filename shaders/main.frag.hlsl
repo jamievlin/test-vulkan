@@ -14,8 +14,6 @@ Texture2D<float4> tex;
 [[vk::binding(1)]]
 SamplerState sLinear;
 
-const float3 LIGHT_POS = float3(3,1,1);
-const float3 DIFFUSE_COLOR = float3(1,0.3,0.8);
 const float r = 0.15;
 const float f0 = 0.04;
 
@@ -54,7 +52,7 @@ float3 BRDF(float3 viewDir, float3 lightDir, float3 normal)
     float ndoth = saturate(dot(normal, halfvec));
 
     float specularVal = DBeckmann(ndoth, r * r) * Fresnel(ndoth) * GVal(ndotv, ndotl, r * r) * 0.25;
-    return DIFFUSE_COLOR + specularVal;
+    return baseColor + specularVal;
 }
 
 float3 compute_light(float3 viewDistance, float3 normal, float3 worldPosition, Light lig)

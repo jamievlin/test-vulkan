@@ -15,7 +15,6 @@ public:
     VkPipeline pipeline = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> cmdBuffers;
-    std::vector<VkDescriptorSet> descriptorSet;
 
     GraphicsPipeline() = default;
     GraphicsPipeline(

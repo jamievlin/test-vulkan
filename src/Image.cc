@@ -280,4 +280,27 @@ namespace Image
         dispose();
     }
 
+    void Image::dispose()
+    {
+        if (initialized())
+        {
+            vkDestroySampler(getLogicalDev(), baseSampler, nullptr);
+            vkDestroyImageView(getLogicalDev(), imgView, nullptr);
+            vmaDestroyImage(*allocator, img, allocation);
+        }
+    }
+
+    VkDescriptorSetLayoutBinding Image::layoutBinding(uint32_t binding)
+    {
+        VkDescriptorSetLayoutBinding bindingData = {};
+
+        bindingData.binding = binding;
+        bindingData.descriptorCount = 1;
+        bindingData.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        bindingData.pImmutableSamplers = nullptr;
+        bindingData.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        return bindingData;
+    }
+
 }

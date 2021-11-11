@@ -99,28 +99,8 @@ namespace Image
                 VkImageLayout const& layout,
                 VkCommandBuffer& cmdBuffer);
 
-        static VkDescriptorSetLayoutBinding layoutBinding(uint32_t binding)
-        {
-            VkDescriptorSetLayoutBinding bindingData = {};
-
-            bindingData.binding = binding;
-            bindingData.descriptorCount = 1;
-            bindingData.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            bindingData.pImmutableSamplers = nullptr;
-            bindingData.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-            return bindingData;
-        }
-
-        void dispose()
-        {
-            if (initialized())
-            {
-                vkDestroySampler(getLogicalDev(), baseSampler, nullptr);
-                vkDestroyImageView(getLogicalDev(), imgView, nullptr);
-                vmaDestroyImage(*allocator, img, allocation);
-            }
-        }
+        static VkDescriptorSetLayoutBinding layoutBinding(uint32_t binding);
+        void dispose();
 
         ~Image() override;
 

@@ -14,9 +14,12 @@ class SwapchainImageBuffers : public AVkGraphicsBase
 {
 public:
     VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout meshDescriptorSetLayout = VK_NULL_HANDLE;
+
     std::vector<UniformObjBuffer<UniformObjects>> unifBuffers;
     std::vector<StorageBufferArray<Light>> lightSBOs;
     std::vector<VkDescriptorSet> descriptorSets;
+    std::vector<VkDescriptorSet> meshDescriptorSets;
 
     SwapchainImageBuffers() = default;
     ~SwapchainImageBuffers();
@@ -38,8 +41,12 @@ public:
 
     void createUniformBuffers(VkPhysicalDevice const& physDev, SwapchainComponents const& swapchainComponent);
     void configureBuffers(uint32_t const& binding, Image::Image& img);
+    void configureMeshBuffers(uint32_t const& binding, DynUniformObjBuffer<MeshUniform> const& unif);
     VkResult createDescriptorSetLayout();
     VkResult createDescriptorSets(SwapchainComponents const& swapchainComponent);
+
+    VkResult createMeshDescriptorSetLayout();
+    VkResult createMeshDescriptorSets(VkDescriptorPool const& descPool);
     std::pair<UniformObjBuffer<UniformObjects>&, VkDescriptorSet& >
             operator[](uint32_t const& i);
 

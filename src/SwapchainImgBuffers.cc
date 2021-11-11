@@ -8,20 +8,6 @@ void SwapchainImageBuffers::configureBuffers(uint32_t const& binding, Image::Ima
 {
     for (uint32_t i = 0; i < imgSize; ++i)
     {
-        VkDescriptorBufferInfo bufferInfo = {};
-        bufferInfo.buffer = unifBuffers[i].vertexBuffer;
-        bufferInfo.offset = 0;
-        bufferInfo.range = unifBuffers[i].getSize();
-
-        VkWriteDescriptorSet descriptorWrite = {};
-        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = descriptorSets[i];
-        descriptorWrite.dstBinding = binding;
-        descriptorWrite.dstArrayElement = 0;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorWrite.descriptorCount = 1;
-        descriptorWrite.pBufferInfo = &bufferInfo;
-
         VkDescriptorImageInfo imageInfo = {};
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         imageInfo.imageView = img.imgView;
@@ -50,13 +36,37 @@ void SwapchainImageBuffers::configureBuffers(uint32_t const& binding, Image::Ima
         descriptorWriteSBO.descriptorCount = 1;
         descriptorWriteSBO.pBufferInfo = &sboBufferInfo;
 
-
         std::vector<VkWriteDescriptorSet> descriptorWriteInfo = {
-                descriptorWrite, descriptorWriteImg, descriptorWriteSBO};
+                UniformObjects::descriptorWrite(0, unifBuffers[i].bufferInfo(), descriptorSets[i]),
+                descriptorWriteImg, descriptorWriteSBO};
 
         vkUpdateDescriptorSets(
                 getLogicalDev(), static_cast<uint32_t>(descriptorWriteInfo.size()),
                 descriptorWriteInfo.data(), 0, nullptr);
+    }
+}
+
+void SwapchainImageBuffers::configureMeshBuffers(uint32_t const& binding, DynUniformObjBuffer<MeshUniform> const& unif)
+{
+    for (uint32_t i = 0; i < imgSize; ++i)
+    {
+        VkDescriptorBufferInfo sboBufferInfo = {};
+        sboBufferInfo.buffer = unif.vertexBuffer;
+        sboBufferInfo.offset = 0;
+        sboBufferInfo.range = sizeof(MeshUniform);
+
+        VkWriteDescriptorSet descriptorWriteSBO = {};
+        descriptorWriteSBO.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWriteSBO.dstSet = meshDescriptorSets[i];
+        descriptorWriteSBO.dstBinding = 0;
+        descriptorWriteSBO.dstArrayElement = 0;
+        descriptorWriteSBO.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        descriptorWriteSBO.descriptorCount = 1;
+        descriptorWriteSBO.pBufferInfo = &sboBufferInfo;
+
+        vkUpdateDescriptorSets(
+                getLogicalDev(), 1,
+                &descriptorWriteSBO, 0, nullptr);
     }
 }
 
@@ -94,9 +104,36 @@ VkResult SwapchainImageBuffers::createDescriptorSets(SwapchainComponents const& 
     createInfo.descriptorPool = swapchainComponent.descriptorPool;
     createInfo.descriptorSetCount = static_cast<uint32_t>(layouts.size());
     createInfo.pSetLayouts = layouts.data();
-
     descriptorSets.resize(imgSize);
     return vkAllocateDescriptorSets(getLogicalDev(), &createInfo, descriptorSets.data());
+}
+
+VkResult SwapchainImageBuffers::createMeshDescriptorSetLayout()
+{
+    std::vector<VkDescriptorSetLayoutBinding> bindings = {
+            MeshUniform::descriptorSetLayout(0)
+    };
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.pBindings = bindings.data();
+
+    return vkCreateDescriptorSetLayout(getLogicalDev(), &layoutInfo, nullptr, &meshDescriptorSetLayout);
+}
+
+VkResult SwapchainImageBuffers::createMeshDescriptorSets(VkDescriptorPool const& descPool)
+{
+    std::vector<VkDescriptorSetLayout> layouts(imgSize, meshDescriptorSetLayout);
+
+    VkDescriptorSetAllocateInfo createInfo = {};
+
+    createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    createInfo.descriptorPool = descPool;
+    createInfo.descriptorSetCount = static_cast<uint32_t>(layouts.size());
+    createInfo.pSetLayouts = layouts.data();
+    meshDescriptorSets.resize(imgSize);
+    return vkAllocateDescriptorSets(getLogicalDev(), &createInfo, meshDescriptorSets.data());
 }
 
 std::pair<UniformObjBuffer<UniformObjects>&, VkDescriptorSet&> SwapchainImageBuffers::operator[](uint32_t const& i)
@@ -112,8 +149,10 @@ SwapchainImageBuffers& SwapchainImageBuffers::operator=(SwapchainImageBuffers&& 
 {
     AVkGraphicsBase::operator=(std::move(sib));
     descriptorSetLayout = std::move(sib.descriptorSetLayout);
+    meshDescriptorSetLayout = std::move(sib.meshDescriptorSetLayout);
     unifBuffers = std::move(sib.unifBuffers);
     descriptorSets = std::move(sib.descriptorSets);
+    meshDescriptorSets = std::move(sib.meshDescriptorSets);
     lightSBOs = std::move(sib.lightSBOs);
     allocator = sib.allocator;
     imgSize = sib.imgSize;
@@ -128,9 +167,11 @@ SwapchainImageBuffers& SwapchainImageBuffers::operator=(SwapchainImageBuffers&& 
 SwapchainImageBuffers::SwapchainImageBuffers(SwapchainImageBuffers&& sib) noexcept:
         AVkGraphicsBase(std::move(sib)),
         descriptorSetLayout(std::move(sib.descriptorSetLayout)),
+        meshDescriptorSetLayout(std::move(sib.meshDescriptorSetLayout)),
         unifBuffers(std::move(sib.unifBuffers)),
         lightSBOs(std::move(sib.lightSBOs)),
         descriptorSets(std::move(sib.descriptorSets)),
+        meshDescriptorSets(std::move(sib.meshDescriptorSets)),
         allocator(sib.allocator),
         imgSize(sib.imgSize)
 {
@@ -167,6 +208,11 @@ SwapchainImageBuffers::SwapchainImageBuffers(VkDevice* logicalDev, VmaAllocator*
     createUniformBuffers(physDev, swapchainComponent);
     CHECK_VK_SUCCESS(createDescriptorSets(swapchainComponent), "Cannot create descriptor sets!");
 
+
+    CHECK_VK_SUCCESS(createMeshDescriptorSetLayout(), "Cannot create descriptor set layout!");
+    CHECK_VK_SUCCESS(createMeshDescriptorSets(swapchainComponent.descriptorPool),
+                     "Cannot create descriptor sets!");
+
     configureBuffers(binding, img);
 }
 
@@ -174,6 +220,7 @@ SwapchainImageBuffers::~SwapchainImageBuffers()
 {
     if (initialized())
     {
+        vkDestroyDescriptorSetLayout(getLogicalDev(), meshDescriptorSetLayout, nullptr);
         vkDestroyDescriptorSetLayout(getLogicalDev(), descriptorSetLayout, nullptr);
     }
 }

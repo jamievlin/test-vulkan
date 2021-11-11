@@ -27,7 +27,7 @@ protected:
     VkResult createCommandPool();
     VkResult createTransferCmdPool();
 
-    void recordCommands();
+    void recordCmd(uint32_t imageIdx, VkFence& submissionFence);
     void drawFrame();
     void resetSwapChain();
 
@@ -36,7 +36,6 @@ protected:
     void setLights(StorageBufferArray<Light>& storageObj);
 
     void initCallbacks();
-
 private:
     bool running = true;
     std::unique_ptr<SwapchainComponents> swapchainComponent;
@@ -46,10 +45,9 @@ private:
     std::unique_ptr<SwapchainImageBuffers> uniformData;
     std::unique_ptr<GraphicsPipeline> graphicsPipeline;
 
-    // buffers
-    Buffers::VertexBuffer<Vertex> vertexBuffer;
-    Buffers::IndexBuffer idxBuffer;
+    std::unique_ptr<DynUniformObjBuffer<MeshUniform>> meshUniformGroup;
 
+    // buffers
     std::vector<FrameSemaphores> frameSemaphores;
     size_t currentFrame = 0;
     Image::Image img;

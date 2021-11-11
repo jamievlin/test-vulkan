@@ -13,7 +13,7 @@
 
 std::vector<char const*> getRequiredExts();
 bool deviceSuitable(VkPhysicalDevice const& dev);
-constexpr size_t MAX_FRAMES_IN_FLIGHT = 3;
+
 
 class WindowBase
 {

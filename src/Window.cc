@@ -55,19 +55,22 @@ Window::Window(size_t const& width,
             helpers::searchPath("main.vert.spv"), helpers::searchPath("main.frag.spv"),
             swapchainComponent->swapchainExtent, swapchainComponent->imageCount(),
             swapchainComponent->renderPass,
-            std::vector<VkDescriptorSetLayout> {uniformData->descriptorSetLayout}, true);
+            std::vector<VkDescriptorSetLayout> {
+                uniformData->descriptorSetLayout,
+                uniformData->meshDescriptorSetLayout}, true);
 
     for (size_t i=0; i < MAX_FRAMES_IN_FLIGHT; ++i)
     {
         frameSemaphores.emplace_back(&logicalDev);
     }
 
+    uniformData->configureMeshBuffers(0, *meshUniformGroup);
+
 
 }
 
 int Window::mainLoop()
 {
-    recordCommands();
     auto lastTime = std::chrono::high_resolution_clock::now();
     while (not glfwWindowShouldClose(window))
     {
@@ -91,6 +94,7 @@ int Window::mainLoop()
 
 Window::~Window()
 {
+    meshUniformGroup.reset();
     graphicsPipeline.reset();
     swapchainComponent.reset();
 
@@ -104,72 +108,102 @@ void Window::initCallbacks()
     glfwSetWindowSizeCallback(window, Window::onWindowSizeChange);
 }
 
-void Window::recordCommands()
+void Window::recordCmd(uint32_t imageIdx, VkFence& submissionFence)
 {
-    //begin buffer recording
-    for (size_t i=0; i < swapchainComponent->imageCount(); ++i)
-    {
-        auto& cmdBuf = graphicsPipeline->cmdBuffers[i];
+    auto& cmdBuf = graphicsPipeline->cmdBuffers[imageIdx];
 
-        VkCommandBufferBeginInfo beginInfo = {};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = 0;
-        beginInfo.pInheritanceInfo = nullptr;
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = 0;
+    beginInfo.pInheritanceInfo = nullptr;
 
-        CHECK_VK_SUCCESS(
-                vkBeginCommandBuffer(cmdBuf, &beginInfo),
-                "Failed to begin buffer recording!");
+    CHECK_VK_SUCCESS(
+            vkBeginCommandBuffer(cmdBuf, &beginInfo),
+            "Failed to begin buffer recording!");
 
-        VkRenderPassBeginInfo renderPassBeginInfo = {};
-        renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassBeginInfo.renderPass = swapchainComponent->renderPass;
-        renderPassBeginInfo.framebuffer = swapchainComponent->swapchainSupport[i].frameBuffer;
+    VkRenderPassBeginInfo renderPassBeginInfo = {};
+    renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassBeginInfo.renderPass = swapchainComponent->renderPass;
+    renderPassBeginInfo.framebuffer = swapchainComponent->swapchainSupport[imageIdx].frameBuffer;
 
-        renderPassBeginInfo.renderArea.offset = {0,0};
-        renderPassBeginInfo.renderArea.extent = swapchainComponent->swapchainExtent;
+    renderPassBeginInfo.renderArea.offset = {0,0};
+    renderPassBeginInfo.renderArea.extent = swapchainComponent->swapchainExtent;
 
-        std::vector<VkClearValue> clearValues(2);
-        clearValues[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
-        clearValues[1].depthStencil = {1.0f, 0};
+    std::vector<VkClearValue> clearValues(2);
+    clearValues[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
+    clearValues[1].depthStencil = {1.0f, 0};
 
-        renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-        renderPassBeginInfo.pClearValues = clearValues.data();
+    renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassBeginInfo.pClearValues = clearValues.data();
 
-        vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipeline);
-        vkCmdBindDescriptorSets(
-                cmdBuf,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                graphicsPipeline->pipelineLayout,
-                0, 1, &(uniformData->descriptorSets[i]),
-                0, nullptr);
+    vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipeline);
 
+    VkDescriptorSet descSets[2] = {uniformData->descriptorSets[imageIdx],
+                                   uniformData->meshDescriptorSets[imageIdx]};
 
-        VkBuffer vertBuffers[] = { mesh.buf.vertexBuffer };
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(cmdBuf, 0, 1, vertBuffers, offsets);
-        vkCmdBindIndexBuffer(cmdBuf, mesh.buf.vertexBuffer, mesh.idxOffset(), VK_INDEX_TYPE_UINT32);
-        // actual drawing command :)
-        // vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
-        vkCmdDrawIndexed(cmdBuf, static_cast<uint32_t>(mesh.idxCount()), 1, 0, 0, 0);
-        vkCmdEndRenderPass(cmdBuf);
+    meshUniformGroup->beginFenceGroup(imageIdx, submissionFence);
 
-        depthBuffer.cmdTransitionLayout(
-                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                VK_IMAGE_LAYOUT_GENERAL,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-                0,
-                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                cmdBuf,
-                Image::hasStencilComponent(Image::findDepthFormat(dev)) ?
-                VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
-                VK_IMAGE_ASPECT_DEPTH_BIT);
-        CHECK_VK_SUCCESS(
-                vkEndCommandBuffer(cmdBuf),
-                "Cannot end command buffer!");
+    // setting new uniform
+    glm::mat4 baseMat = glm::scale(glm::transpose(glm::mat4(
+            0, 0, 1, 0,
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 0, 1
+    )), glm::vec3(0.15f));
 
-    }
+    MeshUniform unif(glm::rotate(baseMat, totalTime / 1000.0f, glm::vec3(0,1,0)));
+    unif.baseColor = glm::vec4(1,0.5, 0, 1);
+    uint32_t offset_val = meshUniformGroup->placeNextData(unif);
+    uint32_t offsetvals[1] = { offset_val };
+
+    MeshUniform unif2(glm::translate(glm::rotate(baseMat, -totalTime / 1000.0f, glm::vec3(0,1,0))
+            , glm::vec3(0,-3,0)));
+    unif2.baseColor = glm::vec4(0,1, 0, 1);
+    uint32_t offset_val2 = meshUniformGroup->placeNextData(unif2);
+    uint32_t offsetvals2[1] = { offset_val2 };
+
+    vkCmdBindDescriptorSets(
+            cmdBuf,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            graphicsPipeline->pipelineLayout,
+            0,
+            2, descSets,
+            1, offsetvals);
+
+    VkBuffer vertBuffers[] = { mesh.buf.vertexBuffer };
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(cmdBuf, 0, 1, vertBuffers, offsets);
+    vkCmdBindIndexBuffer(cmdBuf, mesh.buf.vertexBuffer, mesh.idxOffset(), VK_INDEX_TYPE_UINT32);
+    // actual drawing command :)
+    // vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
+    vkCmdDrawIndexed(cmdBuf, static_cast<uint32_t>(mesh.idxCount()), 1, 0, 0, 0);
+
+    vkCmdBindDescriptorSets(
+            cmdBuf,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            graphicsPipeline->pipelineLayout,
+            1,
+            1, &uniformData->meshDescriptorSets[imageIdx],
+            1, offsetvals2);
+    vkCmdDrawIndexed(cmdBuf, static_cast<uint32_t>(mesh.idxCount()), 1, 0, 0, 0);
+    vkCmdEndRenderPass(cmdBuf);
+
+    depthBuffer.cmdTransitionLayout(
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_GENERAL,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+            0,
+            VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            cmdBuf,
+            Image::hasStencilComponent(Image::findDepthFormat(dev)) ?
+            VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
+            VK_IMAGE_ASPECT_DEPTH_BIT);
+    CHECK_VK_SUCCESS(
+            vkEndCommandBuffer(cmdBuf),
+            "Cannot end command buffer!");
+
 }
 
 void Window::drawFrame()
@@ -208,6 +242,10 @@ void Window::drawFrame()
         vkWaitForFences(logicalDev, 1, &imgIdxFence, VK_TRUE, UINT64_MAX);
     }
     imgIdxFence = inFlightFence;
+    // at this point, image is fully ours.
+
+    vkResetCommandBuffer(graphicsPipeline->cmdBuffers[imgIndex], 0);
+    recordCmd(imgIndex, inFlightFence);
 
     // wait then for img to become available
     VkSubmitInfo submitInfo = {};
@@ -232,6 +270,8 @@ void Window::drawFrame()
 
     setUniforms((*uniformData)[imgIndex].first);
     setLights(uniformData->lightSBOs[imgIndex]);
+
+
     vkResetFences(logicalDev, 1, &inFlightFence);
     CHECK_VK_SUCCESS(
             vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence),
@@ -300,10 +340,8 @@ void Window::resetSwapChain()
             helpers::searchPath("main.vert.spv"), helpers::searchPath("main.frag.spv"),
             swapchainComponent->swapchainExtent, swapchainComponent->imageCount(),
             swapchainComponent->renderPass,
-            std::vector<VkDescriptorSetLayout> {uniformData->descriptorSetLayout},
+            std::vector<VkDescriptorSetLayout> {uniformData->descriptorSetLayout, uniformData->meshDescriptorSetLayout},
             true);
-
-    recordCommands();
 }
 
 // static
@@ -328,7 +366,7 @@ VkResult Window::createCommandPool()
     VkCommandPoolCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     createInfo.queueFamilyIndex = queueFamilyIndex.graphicsFamily.value();
-    createInfo.flags = 0;
+    createInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
     return vkCreateCommandPool(logicalDev, &createInfo, nullptr, &cmdPool);
 }
@@ -345,6 +383,13 @@ VkResult Window::createTransferCmdPool()
 
 void Window::initBuffers()
 {
+    meshUniformGroup = std::make_unique<DynUniformObjBuffer<MeshUniform>>(
+            &logicalDev, &allocator, dev,
+            256,
+            nullopt,
+            0,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
     auto meshStgBuffer = mesh.stagingBuffer(queueFamilyIndex.queuesForTransfer());
 
     helpers::img_r8g8b8a8 image = helpers::fromPng(helpers::searchPath("assets/smile.png"));
@@ -409,7 +454,7 @@ void Window::setUniforms(UniformObjBuffer<UniformObjects>& bufObject)
             0, 0, 0, 1
     )), glm::vec3(0.15f));
     ubo.time = totalTime / 1000.f;
-    ubo.model = glm::rotate(baseMat, totalTime / 1000.0f, Yup);
+
 
     ubo.view = glm::lookAt(
             cameraPos,
@@ -417,8 +462,6 @@ void Window::setUniforms(UniformObjBuffer<UniformObjects>& bufObject)
             glm::vec3(1.f, -1.f, -1.f));
     ubo.proj = projectMat;
     ubo.cameraPos = glm::vec4(cameraPos, 1);
-    ubo.modelInvDual = glm::inverseTranspose(ubo.model);
-
     CHECK_VK_SUCCESS(bufObject.loadData(ubo), "Cannot set uniforms!");
 }
 
@@ -429,12 +472,12 @@ void Window::setLights(StorageBufferArray<Light>& storageObj)
     std::vector<Light> li(2);
     li[0].lightType = LightType::POINT_LIGHT;
     li[0].position = glm::vec4(t,2,2,1);
-    li[0].color = glm::vec4(1,0,1,1) * (t + 1);
+    li[0].color = glm::vec4(1,1,1,1) * (t + 1);
     li[0].intensity = 5.f;
 
     li[1].lightType = LightType::POINT_LIGHT;
     li[1].position = glm::vec4(2,t,3,1);
-    li[1].color = glm::vec4(0,1,1,1);
+    li[1].color = glm::vec4(0,1,0,1);
     li[1].intensity = 2.f;
 
     storageObj.loadDataAndSetSize(li);
