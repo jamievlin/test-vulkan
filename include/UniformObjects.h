@@ -24,6 +24,7 @@ struct UniformObjects
 struct MeshUniform
 {
     glm::vec4 baseColor;
+    glm::vec4 params; // metallic, roughmess, F0, unused
     glm::mat4 model;
     glm::mat4 modelInvDual;
 

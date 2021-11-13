@@ -8,6 +8,7 @@
 enum LightType : uint32_t
 {
     POINT_LIGHT = 0,
+    DIRECTIONAL_LIGHT = 1,
 };
 
 struct Light

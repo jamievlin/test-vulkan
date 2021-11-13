@@ -62,7 +62,8 @@ Window::Window(size_t const& width,
 
     drawables[0].uniform.baseColor = glm::vec4(1,1,1,1);
     drawables[1].uniform.baseColor = glm::vec4(0.6,0.2,0.45,1);
-
+    drawables[0].uniform.params = glm::vec4(0.15,0,0.04,0);
+    drawables[1].uniform.params = glm::vec4(0.35,0,0.04,0);
 
     // for vertex buffer
     initBuffers();
@@ -475,7 +476,7 @@ void Window::setLights(StorageBufferArray<Light>& storageObj)
 {
     float t = sin(totalTime / 500);
 
-    std::vector<Light> li(2);
+    std::vector<Light> li(3);
     li[0].lightType = LightType::POINT_LIGHT;
     li[0].position = glm::vec4(t,2,2,1);
     li[0].color = glm::vec4(1,1,1,1) * (t + 1);
@@ -485,6 +486,11 @@ void Window::setLights(StorageBufferArray<Light>& storageObj)
     li[1].position = glm::vec4(2,t,3,1);
     li[1].color = glm::vec4(0,1,0,1);
     li[1].intensity = 2.f;
+
+    li[2].lightType = LightType::DIRECTIONAL_LIGHT;
+    li[2].position = glm::vec4(1,1,1,0);
+    li[2].color = glm::vec4(1,1,0,1);
+    li[2].intensity = 1.f;
 
     storageObj.loadDataAndSetSize(li);
 }

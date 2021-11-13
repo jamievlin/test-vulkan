@@ -14,9 +14,6 @@ Texture2D<float4> tex;
 [[vk::binding(1)]]
 SamplerState sLinear;
 
-const float r = 0.15;
-const float f0 = 0.04;
-
 float Fresnel(float3 ndoth)
 {
     // schlick's approximation
@@ -45,36 +42,55 @@ float GVal(float ndotv, float ndotl, float r2)
 
 float3 BRDF(float3 viewDir, float3 lightDir, float3 normal)
 {
+    float roughness2 = roughness * roughness;
     float3 halfvec = normalize(viewDir + lightDir);
 
     float ndotl = saturate(dot(normal, lightDir));
     float ndotv = saturate(dot(normal, viewDir));
     float ndoth = saturate(dot(normal, halfvec));
 
-    float specularVal = DBeckmann(ndoth, r * r) * Fresnel(ndoth) * GVal(ndotv, ndotl, r * r) * 0.25;
+    float specularVal = DBeckmann(ndoth, roughness2) * Fresnel(ndoth) * GVal(ndotv, ndotl, roughness2) * 0.25;
     return baseColor + specularVal;
 }
 
-float3 compute_light(float3 viewDistance, float3 normal, float3 worldPosition, Light lig)
+float3 compute_light_point(float3 viewVec, float3 normal, float3 worldPosition, Light lig)
 {
     float3 lightDistance = lig.position.xyz - worldPosition;
-    float lightDirDot = saturate(dot(normalize(lightDistance), normal));
     float attenuation = rcp(dot(lightDistance, lightDistance));
+
     float3 lightColor = lig.intensity * lig.color.rgb * attenuation;
 
-    return BRDF(normalize(viewDistance), normalize(lightDistance), normal) * lightColor * lightDirDot;
+    float lightDirDot = saturate(dot(normalize(lightDistance), normal));
+    return BRDF(viewVec, normalize(lightDistance), normal) * lightColor * lightDirDot;
+}
+
+float3 compute_light_dir(float3 viewVec, float3 normal, Light lig)
+{
+    float3 lightDistance = normalize(lig.position.xyz);
+    float3 lightColor = lig.intensity * lig.color.rgb;
+    float lightDirDot = saturate(dot(lightDistance, normal));
+    return BRDF(viewVec, lightDistance, normal) * lightColor * lightDirDot;
 }
 
 PixelShaderOutput main(PixelShaderInput psi)
 {
     PixelShaderOutput pso;
     float3 normal = normalize(psi.inNormal);
-    float3 viewVec = cameraPos.xyz - psi.worldPos;
+    float3 viewVec = normalize(cameraPos.xyz - psi.worldPos);
 
     float3 outColor = float3(0,0,0);
     for (uint i=0; i < lightCount; ++i)
     {
-        outColor += compute_light(viewVec, normal, psi.worldPos, lightsObj[i]);
+        [branch] switch(lightsObj[i].lightType)
+        {
+            case POINT_LIGHT:
+                outColor += compute_light_point(viewVec, normal, psi.worldPos, lightsObj[i]);
+            break;
+
+            case DIRECTIONAL_LIGHT:
+                outColor += compute_light_dir(viewVec, normal, lightsObj[i]);
+            break;
+        }
     }
 
     pso.fragColor = float4(outColor, 1); // float4(multValue * psi.inColor,1);

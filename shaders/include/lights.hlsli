@@ -1,3 +1,7 @@
+#define POINT_LIGHT 0
+#define DIRECTIONAL_LIGHT 1
+
+
 struct Light
 {
     uint lightType;
