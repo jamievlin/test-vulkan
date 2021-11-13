@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.21)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
 project(vkTest)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -90,6 +90,8 @@ foreach(shaderFile IN LISTS SHADERS)
     list(APPEND SHADER_OUTFILES ${shaderOutName})
 
     # using glslc
+
+if(${CMAKE_VERSION} VERSION_GREATER "3.20.0") 
     set(GLSLC_CMD glslc
             ${GLSLC_FULL_FLAGS}
             -MD
@@ -105,6 +107,21 @@ foreach(shaderFile IN LISTS SHADERS)
             MAIN_DEPENDENCY ${shaderFile}
             DEPFILE ${shaderDepFile}
     )
+else()
+    message("Shader include dependencies will not be properly updated; please use version >= 3.21.0. ")
+    set(GLSLC_CMD glslc
+            ${GLSLC_FULL_FLAGS}
+            -fshader-stage=${shaderStage}
+            ${shaderFile}
+            -o ${shaderOutName})
+
+    add_custom_command(
+            OUTPUT ${shaderOutName}
+            COMMAND ${GLSLC_CMD}
+            MAIN_DEPENDENCY ${shaderFile}
+    )
+endif()
+
 endforeach()
 
 add_custom_target(shaders
