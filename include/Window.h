@@ -6,6 +6,7 @@
 #include "common.h"
 #include "WindowBase.h"
 #include "Mesh.h"
+#include "Drawable.h"
 
 class Window : public WindowBase
 {
@@ -57,9 +58,8 @@ private:
     float fovDegrees;
     float clipNear, clipFar;
     glm::mat4 projectMat;
-
     glm::vec3 cameraPos;
 
-    Mesh mesh;
-
+    std::map<std::string, std::unique_ptr<Mesh>> meshStorage;
+    std::vector<Drawable> drawables;
 };

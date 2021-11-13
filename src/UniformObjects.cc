@@ -42,3 +42,14 @@ VkDescriptorSetLayoutBinding MeshUniform::descriptorSetLayout(uint32_t binding)
 
     return uboLayout;
 }
+
+void MeshUniform::computeInvDual()
+{
+    modelInvDual = glm::inverseTranspose(model);
+}
+
+void MeshUniform::setModelMatrix(glm::mat4 const& newModel)
+{
+    model = newModel;
+    computeInvDual();
+}

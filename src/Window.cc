@@ -41,7 +41,28 @@ Window::Window(size_t const& width,
 
     CHECK_VK_SUCCESS(createCommandPool(), ErrorMessages::CREATE_COMMAND_POOL_FAILED);
     CHECK_VK_SUCCESS(createTransferCmdPool(), "Cannot create transfer command pool!");
-    mesh = Mesh(&logicalDev, &allocator, &dev, helpers::searchPath("assets/teapot.obj"));
+
+    meshStorage.emplace("teapot", std::make_unique<Mesh>(
+            &logicalDev, &allocator, &dev, helpers::searchPath("assets/teapot.obj")
+            ));
+
+    meshStorage.emplace("plane", std::make_unique<Mesh>(
+            &logicalDev, &allocator, &dev, helpers::searchPath("assets/plane.obj")
+            ));
+
+    glm::mat4 baseMat = glm::scale(glm::transpose(glm::mat4(
+            0, 0, 1, 0,
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 0, 1
+    )), glm::vec3(0.15f));
+
+    drawables.emplace_back(meshStorage["teapot"].get(), baseMat);
+    drawables.emplace_back(meshStorage["plane"].get(), baseMat);
+
+    drawables[0].uniform.baseColor = glm::vec4(1,1,1,1);
+    drawables[1].uniform.baseColor = glm::vec4(0.6,0.2,0.45,1);
+
 
     // for vertex buffer
     initBuffers();
@@ -139,54 +160,40 @@ void Window::recordCmd(uint32_t imageIdx, VkFence& submissionFence)
     vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipeline);
 
-    VkDescriptorSet descSets[2] = {uniformData->descriptorSets[imageIdx],
-                                   uniformData->meshDescriptorSets[imageIdx]};
-
-    meshUniformGroup->beginFenceGroup(imageIdx, submissionFence);
-
-    // setting new uniform
-    glm::mat4 baseMat = glm::scale(glm::transpose(glm::mat4(
-            0, 0, 1, 0,
-            1, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 0, 1
-    )), glm::vec3(0.15f));
-
-    MeshUniform unif(glm::rotate(baseMat, totalTime / 1000.0f, glm::vec3(0,1,0)));
-    unif.baseColor = glm::vec4(1,0.5, 0, 1);
-    uint32_t offset_val = meshUniformGroup->placeNextData(unif);
-    uint32_t offsetvals[1] = { offset_val };
-
-    MeshUniform unif2(glm::translate(glm::rotate(baseMat, -totalTime / 1000.0f, glm::vec3(0,1,0))
-            , glm::vec3(0,-3,0)));
-    unif2.baseColor = glm::vec4(0,1, 0, 1);
-    uint32_t offset_val2 = meshUniformGroup->placeNextData(unif2);
-    uint32_t offsetvals2[1] = { offset_val2 };
-
+    VkDescriptorSet descSets[1] = {uniformData->descriptorSets[imageIdx]};
     vkCmdBindDescriptorSets(
             cmdBuf,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             graphicsPipeline->pipelineLayout,
             0,
-            2, descSets,
-            1, offsetvals);
+            1, descSets,
+            0, nullptr);
 
-    VkBuffer vertBuffers[] = { mesh.buf.vertexBuffer };
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(cmdBuf, 0, 1, vertBuffers, offsets);
-    vkCmdBindIndexBuffer(cmdBuf, mesh.buf.vertexBuffer, mesh.idxOffset(), VK_INDEX_TYPE_UINT32);
-    // actual drawing command :)
-    // vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
-    vkCmdDrawIndexed(cmdBuf, static_cast<uint32_t>(mesh.idxCount()), 1, 0, 0, 0);
+    meshUniformGroup->beginFenceGroup(imageIdx, submissionFence);
 
-    vkCmdBindDescriptorSets(
-            cmdBuf,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            graphicsPipeline->pipelineLayout,
-            1,
-            1, &uniformData->meshDescriptorSets[imageIdx],
-            1, offsetvals2);
-    vkCmdDrawIndexed(cmdBuf, static_cast<uint32_t>(mesh.idxCount()), 1, 0, 0, 0);
+    for (auto& drawable : drawables)
+    {
+        Mesh& mesh = drawable.getMesh();
+        uint32_t offset_val = meshUniformGroup->placeNextData(drawable.uniform);
+        uint32_t offsetvals[1] = { offset_val };
+
+        vkCmdBindDescriptorSets(
+                cmdBuf,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                graphicsPipeline->pipelineLayout,
+                1,
+                1, &uniformData->meshDescriptorSets[imageIdx],
+                1, offsetvals);
+
+        VkBuffer vertBuffers[] = { mesh.buf.vertexBuffer };
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(cmdBuf, 0, 1, vertBuffers, offsets);
+        vkCmdBindIndexBuffer(cmdBuf, mesh.buf.vertexBuffer, mesh.idxOffset(), VK_INDEX_TYPE_UINT32);
+        // actual drawing command :)
+        // vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
+        vkCmdDrawIndexed(cmdBuf, static_cast<uint32_t>(mesh.idxCount()), 1, 0, 0, 0);
+    }
+
     vkCmdEndRenderPass(cmdBuf);
 
     depthBuffer.cmdTransitionLayout(
@@ -342,6 +349,8 @@ void Window::resetSwapChain()
             swapchainComponent->renderPass,
             std::vector<VkDescriptorSetLayout> {uniformData->descriptorSetLayout, uniformData->meshDescriptorSetLayout},
             true);
+
+    uniformData->configureMeshBuffers(0, *meshUniformGroup);
 }
 
 // static
@@ -390,8 +399,6 @@ void Window::initBuffers()
             0,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-    auto meshStgBuffer = mesh.stagingBuffer(queueFamilyIndex.queuesForTransfer());
-
     helpers::img_r8g8b8a8 image = helpers::fromPng(helpers::searchPath("assets/smile.png"));
     Buffers::StagingBuffer imageStgBuffer(
             &logicalDev, &allocator, dev, image.totalSize(),
@@ -426,7 +433,14 @@ void Window::initBuffers()
 
     // submit in one batch
     DisposableCmdBuffer dcb(&logicalDev, &cmdTransferPool);
-    mesh.buf.cmdCopyDataFrom(*meshStgBuffer, dcb.commandBuffer());
+
+    std::vector<std::shared_ptr<Buffers::StagingBuffer>> meshStgBuffers;
+    for (auto& [name, meshPtr] : meshStorage)
+    {
+        auto stagingPtr = meshPtr->stagingBuffer(queueFamilyIndex.queuesForTransfer());
+        meshStgBuffers.push_back(stagingPtr);
+        meshPtr->buf.cmdCopyDataFrom(stagingPtr->vertexBuffer, dcb.commandBuffer());
+    }
     // vertexBuffer.cmdCopyDataFrom(stagingBuffer, dcb.commandBuffer());
     // idxBuffer.cmdCopyDataFrom(stagingBufferIdx, dcb.commandBuffer());
     img.cmdTransitionBeginCopy(dcb.commandBuffer());
@@ -446,22 +460,14 @@ void Window::setUniforms(UniformObjBuffer<UniformObjects>& bufObject)
     glm::vec3 O(0,0,0);
 
     UniformObjects ubo = {};
-
-    glm::mat4 baseMat = glm::scale(glm::transpose(glm::mat4(
-            0, 0, 1, 0,
-            1, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 0, 1
-    )), glm::vec3(0.15f));
     ubo.time = totalTime / 1000.f;
-
-
     ubo.view = glm::lookAt(
             cameraPos,
             O,
             glm::vec3(1.f, -1.f, -1.f));
     ubo.proj = projectMat;
     ubo.cameraPos = glm::vec4(cameraPos, 1);
+
     CHECK_VK_SUCCESS(bufObject.loadData(ubo), "Cannot set uniforms!");
 }
 
@@ -486,4 +492,14 @@ void Window::setLights(StorageBufferArray<Light>& storageObj)
 void Window::updateFrame(float const& deltaTime)
 {
     totalTime += deltaTime;
+    // setting new uniform
+
+    glm::mat4 baseMat = glm::scale(glm::transpose(glm::mat4(
+            0, 0, 1, 0,
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 0, 1
+    )), glm::vec3(0.15f));
+
+    drawables[0].uniform.setModelMatrix(glm::rotate(baseMat, -totalTime / 1000.0f, glm::vec3(0,1,0)));
 }

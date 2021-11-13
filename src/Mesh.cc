@@ -10,7 +10,6 @@ Mesh::Mesh(VkDevice* logicalDev, VmaAllocator* allocator, VkPhysicalDevice* phys
     std::vector<glm::vec3> rawNormals;
 
     std::ifstream objfile(objFile);
-
     assert(objfile.is_open());
 
     std::string buffer;
