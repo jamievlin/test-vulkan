@@ -12,7 +12,7 @@ PixelShaderInput main(VertexInput vi)
     psi.scrPos = mul(MVP, inPos4);
 
     float4 inNormalZ = mul(meshModelInvDual, float4(vi.inNormal,0));
-    psi.inNormal = inNormalZ.xyz;
+    psi.inNormal = normalize(inNormalZ.xyz);
     psi.outTexCoord = vi.texCoord;
     psi.worldPos = mul(meshModel, inPos4).xyz;
     return psi;
