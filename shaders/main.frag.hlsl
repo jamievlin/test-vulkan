@@ -1,18 +1,14 @@
 #include "pixelshader.hlsli"
 #include "ubo.hlsli"
 #include "lights.hlsli"
+#include "meshubo.hlsli"
+
 
 struct PixelShaderOutput
 {
     [[vk::location(0)]]
     float4 fragColor : SV_TARGET;
 };
-
-[[vk::binding(1,0)]]
-Texture2D<float4> tex;
-
-[[vk::binding(1,0)]]
-SamplerState sLinear;
 
 float Fresnel(float3 ndoth)
 {

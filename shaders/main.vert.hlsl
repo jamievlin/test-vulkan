@@ -1,6 +1,7 @@
 #include "vertexinput.hlsli"
 #include "pixelshader.hlsli"
 #include "ubo.hlsli"
+#include "meshubo.hlsli"
 
 
 PixelShaderInput main(VertexInput vi)

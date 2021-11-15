@@ -22,24 +22,9 @@ void SwapchainImageBuffers::configureBuffers(uint32_t const& binding, Image::Ima
         descriptorWriteImg.descriptorCount = 1;
         descriptorWriteImg.pImageInfo = &imageInfo;
 
-        VkDescriptorBufferInfo sboBufferInfo = {};
-        sboBufferInfo.buffer = lightSBOs[i].vertexBuffer;
-        sboBufferInfo.offset = 0;
-        sboBufferInfo.range = lightSBOs[i].getSize();
-
-        VkWriteDescriptorSet descriptorWriteSBO = {};
-        descriptorWriteSBO.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWriteSBO.dstSet = descriptorSets[i];
-        descriptorWriteSBO.dstBinding = 2;
-        descriptorWriteSBO.dstArrayElement = 0;
-        descriptorWriteSBO.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorWriteSBO.descriptorCount = 1;
-        descriptorWriteSBO.pBufferInfo = &sboBufferInfo;
-
         std::vector<VkWriteDescriptorSet> descriptorWriteInfo = {
                 UniformObjects::descriptorWrite(0, unifBuffers[i].bufferInfo(), descriptorSets[i]),
-                descriptorWriteImg,
-                descriptorWriteSBO
+                descriptorWriteImg
         };
 
         vkUpdateDescriptorSets(
@@ -67,7 +52,6 @@ void SwapchainImageBuffers::configureMeshBuffers(uint32_t const& binding, DynUni
 
 VkResult SwapchainImageBuffers::createDescriptorSetLayout()
 {
-
     VkDescriptorSetLayoutBinding imgBindingData = {};
     imgBindingData.binding = 1;
     imgBindingData.descriptorCount = 1;
@@ -77,8 +61,7 @@ VkResult SwapchainImageBuffers::createDescriptorSetLayout()
 
     std::vector<VkDescriptorSetLayoutBinding> bindings = {
             UniformObjects::descriptorSetLayout(0),
-            imgBindingData,
-            StorageBufferArray<Light>::DescriptorSetLayout(2)
+            imgBindingData
     };
 
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
@@ -148,13 +131,11 @@ SwapchainImageBuffers& SwapchainImageBuffers::operator=(SwapchainImageBuffers&& 
     unifBuffers = std::move(sib.unifBuffers);
     descriptorSets = std::move(sib.descriptorSets);
     meshDescriptorSets = std::move(sib.meshDescriptorSets);
-    lightSBOs = std::move(sib.lightSBOs);
     allocator = sib.allocator;
     imgSize = sib.imgSize;
 
     sib.unifBuffers.clear();
     sib.descriptorSets.clear();
-    sib.lightSBOs.clear();
 
     return *this;
 }
@@ -164,7 +145,6 @@ SwapchainImageBuffers::SwapchainImageBuffers(SwapchainImageBuffers&& sib) noexce
         descriptorSetLayout(std::move(sib.descriptorSetLayout)),
         meshDescriptorSetLayout(std::move(sib.meshDescriptorSetLayout)),
         unifBuffers(std::move(sib.unifBuffers)),
-        lightSBOs(std::move(sib.lightSBOs)),
         descriptorSets(std::move(sib.descriptorSets)),
         meshDescriptorSets(std::move(sib.meshDescriptorSets)),
         allocator(sib.allocator),
@@ -172,7 +152,6 @@ SwapchainImageBuffers::SwapchainImageBuffers(SwapchainImageBuffers&& sib) noexce
 {
     sib.unifBuffers.clear();
     sib.descriptorSets.clear();
-    sib.lightSBOs.clear();
 }
 
 void SwapchainImageBuffers::createUniformBuffers(VkPhysicalDevice const& physDev,
@@ -182,11 +161,6 @@ void SwapchainImageBuffers::createUniformBuffers(VkPhysicalDevice const& physDev
     {
         unifBuffers.emplace_back(
                 getLogicalDevPtr(), allocator, physDev,
-                nullopt, 0,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-        lightSBOs.emplace_back(
-                getLogicalDevPtr(), allocator, physDev, 64,
                 nullopt, 0,
                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     }

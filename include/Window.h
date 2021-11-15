@@ -40,6 +40,10 @@ protected:
     void setLights(StorageBufferArray<Light>& storageObj);
 
     void initCallbacks();
+
+    void createShadowmapsDescPool();
+    void createShadowmapsDescSets();
+    void updateShadowmapBuffer();
 private:
     bool running = true;
     std::unique_ptr<SwapchainComponents> swapchainComponent;
@@ -48,13 +52,20 @@ private:
 
     std::unique_ptr<SwapchainImageBuffers> uniformData;
     std::unique_ptr<GraphicsPipeline> graphicsPipeline;
-
     std::unique_ptr<ShadowmapPipeline> shadowmapGraphicsPipeline;
-
     std::unique_ptr<DynUniformObjBuffer<MeshUniform>> meshUniformGroup;
 
     // buffers
     std::vector<FrameSemaphores> frameSemaphores;
+
+    struct
+    {
+        VkDescriptorSetLayout lightsAndShadowmapsLayout;
+        VkDescriptorPool lightsSmapDescPool;
+        VkDescriptorSet lightAndShadowmapsDescSets;
+        std::unique_ptr<StorageBufferArray<Light>> lightStorage;
+    } lightShadowmapDesc;
+
     size_t currentFrame = 0;
     Image::Image img;
     Image::Image depthBuffer;

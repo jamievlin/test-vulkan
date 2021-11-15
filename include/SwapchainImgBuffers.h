@@ -17,7 +17,6 @@ public:
     VkDescriptorSetLayout meshDescriptorSetLayout = VK_NULL_HANDLE;
 
     std::vector<UniformObjBuffer<UniformObjects>> unifBuffers;
-    std::vector<StorageBufferArray<Light>> lightSBOs;
     std::vector<VkDescriptorSet> descriptorSets;
     std::vector<VkDescriptorSet> meshDescriptorSets;
 

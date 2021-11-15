@@ -38,3 +38,7 @@ struct Light
         return uboLayout;
     };
 };
+
+namespace Lights
+{
+}

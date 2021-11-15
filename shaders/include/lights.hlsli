@@ -12,9 +12,9 @@ struct Light
     float4 parameters;
 };
 
-[[vk::binding(2,0)]]
+[[vk::binding(0,2)]]
 tbuffer lights
 {
     uint lightCount;
-    Light lightsObj[64];
+    Light lightsObj[];
 };

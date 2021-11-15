@@ -8,14 +8,9 @@ cbuffer UBO
     float4x4 lightDirMatrix;
 };
 
-[[vk::binding(0,1)]]
-cbuffer MeshUBO
-{
-    float4 baseColor;
-    float roughness;
-    float metallic;
-    float f0;
-    float _unused;
-    float4x4 meshModel;
-    float4x4 meshModelInvDual;
-};
+[[vk::binding(1,0)]]
+Texture2D<float4> tex;
+
+[[vk::binding(1,0)]]
+SamplerState sLinear;
+
