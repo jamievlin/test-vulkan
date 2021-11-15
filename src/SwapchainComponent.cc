@@ -19,8 +19,8 @@ SwapchainComponents::initSwapChain(
 
     swapchainFormat=detail.selectFmt();
     swapchainExtent=detail.chooseSwapExtent(
-            static_cast<uint32_t>(windowHeight.first),
-            static_cast<uint32_t>(windowHeight.second));
+            CAST_UINT32(windowHeight.first),
+            CAST_UINT32(windowHeight.second));
 
     uint32_t imgCount=std::min(
             detail.capabilities.minImageCount + 1,
@@ -125,7 +125,7 @@ VkResult SwapchainComponents::createRenderPasses(VkPhysicalDevice const& physDev
 
     VkRenderPassCreateInfo renderPassCreateInfo = {};
     renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+    renderPassCreateInfo.attachmentCount = CAST_UINT32(attachments.size());
     renderPassCreateInfo.pAttachments = attachments.data();
     renderPassCreateInfo.subpassCount = 1;
     renderPassCreateInfo.pSubpasses = &subpass;
@@ -212,7 +212,7 @@ SwapchainComponents::~SwapchainComponents()
 
 uint32_t SwapchainComponents::imageCount() const
 {
-    return static_cast<uint32_t>(swapChainImages.size());
+    return CAST_UINT32(swapChainImages.size());
 }
 
 VkResult SwapchainComponents::createDescriptorPool()

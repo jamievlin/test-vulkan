@@ -36,7 +36,7 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
     vertInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertInputInfo.vertexBindingDescriptionCount = 1;
     vertInputInfo.pVertexBindingDescriptions = &bindingDesc;
-    vertInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribDesc.size());
+    vertInputInfo.vertexAttributeDescriptionCount = CAST_UINT32(attribDesc.size());
     vertInputInfo.pVertexAttributeDescriptions = attribDesc.data();
 
     VkPipelineInputAssemblyStateCreateInfo inputAsmStateInfo = {};
@@ -114,7 +114,7 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
 
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
     pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayout.size());
+    pipelineLayoutCreateInfo.setLayoutCount = CAST_UINT32(descriptorSetLayout.size());
     pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayout.data();
     pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
     pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
@@ -201,7 +201,7 @@ VkResult GraphicsPipeline::createCmdBuffers(size_t const& swpchainImgCount)
     allocateInfo.commandPool = *cmdPool;
     allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     // 1 command buffer per frame buffer
-    allocateInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
+    allocateInfo.commandBufferCount = CAST_UINT32(cmdBuffers.size());
 
     return vkAllocateCommandBuffers(getLogicalDev(), &allocateInfo, cmdBuffers.data());
 }
@@ -219,7 +219,7 @@ GraphicsPipeline& GraphicsPipeline::operator=(GraphicsPipeline&& graphicspipelin
     if (initialized())
     {
         vkFreeCommandBuffers(getLogicalDev(), *cmdPool,
-                             static_cast<uint32_t>(cmdBuffers.size()),
+                             CAST_UINT32(cmdBuffers.size()),
                              cmdBuffers.data());
         vkDestroyPipeline(getLogicalDev(), pipeline, nullptr);
         vkDestroyPipelineLayout(getLogicalDev(), pipelineLayout, nullptr);
@@ -239,7 +239,7 @@ GraphicsPipeline::~GraphicsPipeline()
     if (initialized())
     {
         vkFreeCommandBuffers(getLogicalDev(), *cmdPool,
-                             static_cast<uint32_t>(cmdBuffers.size()),
+                             CAST_UINT32(cmdBuffers.size()),
                              cmdBuffers.data());
         vkDestroyPipeline(getLogicalDev(), pipeline, nullptr);
         vkDestroyPipelineLayout(getLogicalDev(), pipelineLayout, nullptr);

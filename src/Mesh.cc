@@ -40,7 +40,7 @@ Mesh::Mesh(VkDevice* logicalDev, VmaAllocator* allocator, VkPhysicalDevice* phys
         else if (mode == "f")
         {
             std::string tmpindex;
-            uint32_t currIndex = static_cast<uint32_t>(verts.size());
+            uint32_t currIndex = CAST_UINT32(verts.size());
             int counter = 0;
 
             while (sstr >> tmpindex)

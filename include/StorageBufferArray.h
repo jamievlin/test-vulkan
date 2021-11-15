@@ -53,7 +53,7 @@ public:
 
     VkResult loadDataAndSetSize(std::vector<T> const& objList)
     {
-        setCurrentSize(static_cast<uint32_t>(objList.size()));
+        setCurrentSize(CAST_UINT32(objList.size()));
         return Buffer::loadData({
             {&currentSize, 0, sizeof(uint32_t)},
             {objList.data(), sizeof(glm::vec4), sizeof(T) * objList.size()}});

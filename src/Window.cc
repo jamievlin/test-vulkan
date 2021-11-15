@@ -230,7 +230,7 @@ void Window::recordShadowmapCmd(VkCommandBuffer& smapBuf, uint32_t imageIdx, VkF
         vkCmdBindIndexBuffer(smapBuf, mesh.buf.vertexBuffer, mesh.idxOffset(), VK_INDEX_TYPE_UINT32);
         // actual drawing command :)
         // vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
-        vkCmdDrawIndexed(smapBuf, static_cast<uint32_t>(mesh.idxCount()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(smapBuf, CAST_UINT32(mesh.idxCount()), 1, 0, 0, 0);
     }
 
     /*
@@ -274,7 +274,7 @@ void Window::recordCmd(uint32_t imageIdx, VkFence& submissionFence)
     clearValues[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
     clearValues[1].depthStencil = {1.0f, 0};
 
-    renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassBeginInfo.clearValueCount = CAST_UINT32(clearValues.size());
     renderPassBeginInfo.pClearValues = clearValues.data();
     vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipeline);
@@ -322,7 +322,7 @@ void Window::recordCmd(uint32_t imageIdx, VkFence& submissionFence)
         vkCmdBindIndexBuffer(cmdBuf, mesh.buf.vertexBuffer, mesh.idxOffset(), VK_INDEX_TYPE_UINT32);
         // actual drawing command :)
         // vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
-        vkCmdDrawIndexed(cmdBuf, static_cast<uint32_t>(mesh.idxCount()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(cmdBuf, CAST_UINT32(mesh.idxCount()), 1, 0, 0, 0);
     }
 
     vkCmdEndRenderPass(cmdBuf);

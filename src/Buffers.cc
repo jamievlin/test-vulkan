@@ -82,7 +82,7 @@ namespace Buffers
 
     uint32_t Buffer::getSize() const
     {
-        return static_cast<uint32_t>(size);
+        return CAST_UINT32(size);
     }
 
     VkResult Buffer::createVertexBuffer(
@@ -116,7 +116,7 @@ namespace Buffers
         createInfo.size = size;
         createInfo.usage = bufferUsageFlags;
         createInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
-        createInfo.queueFamilyIndexCount = static_cast<uint32_t>(queues.size());
+        createInfo.queueFamilyIndexCount = CAST_UINT32(queues.size());
 
         std::vector<uint32_t> queueVec(queues.size());
         queueVec.assign(queues.begin(), queues.end());

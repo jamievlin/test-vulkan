@@ -28,7 +28,7 @@ void SwapchainImageBuffers::configureBuffers(uint32_t const& binding, Image::Ima
         };
 
         vkUpdateDescriptorSets(
-                getLogicalDev(), static_cast<uint32_t>(descriptorWriteInfo.size()),
+                getLogicalDev(), CAST_UINT32(descriptorWriteInfo.size()),
                 descriptorWriteInfo.data(), 0, nullptr);
     }
 }
@@ -66,7 +66,7 @@ VkResult SwapchainImageBuffers::createDescriptorSetLayout()
 
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.bindingCount = CAST_UINT32(bindings.size());
     layoutInfo.pBindings = bindings.data();
 
     return vkCreateDescriptorSetLayout(getLogicalDev(), &layoutInfo, nullptr, &descriptorSetLayout);
@@ -80,7 +80,7 @@ VkResult SwapchainImageBuffers::createDescriptorSets(SwapchainComponents const& 
 
     createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     createInfo.descriptorPool = swapchainComponent.descriptorPool;
-    createInfo.descriptorSetCount = static_cast<uint32_t>(layouts.size());
+    createInfo.descriptorSetCount = CAST_UINT32(layouts.size());
     createInfo.pSetLayouts = layouts.data();
     descriptorSets.resize(imgSize);
     return vkAllocateDescriptorSets(getLogicalDev(), &createInfo, descriptorSets.data());
@@ -94,7 +94,7 @@ VkResult SwapchainImageBuffers::createMeshDescriptorSetLayout()
 
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.bindingCount = CAST_UINT32(bindings.size());
     layoutInfo.pBindings = bindings.data();
 
     return vkCreateDescriptorSetLayout(getLogicalDev(), &layoutInfo, nullptr, &meshDescriptorSetLayout);
@@ -108,7 +108,7 @@ VkResult SwapchainImageBuffers::createMeshDescriptorSets(VkDescriptorPool const&
 
     createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     createInfo.descriptorPool = descPool;
-    createInfo.descriptorSetCount = static_cast<uint32_t>(layouts.size());
+    createInfo.descriptorSetCount = CAST_UINT32(layouts.size());
     createInfo.pSetLayouts = layouts.data();
     meshDescriptorSets.resize(imgSize);
     return vkAllocateDescriptorSets(getLogicalDev(), &createInfo, meshDescriptorSets.data());

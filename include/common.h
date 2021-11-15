@@ -74,3 +74,5 @@ using std::nullopt;
 #define VEC4_ALIGN alignas(sizeof(glm::vec4))
 
 constexpr size_t MAX_FRAMES_IN_FLIGHT = 3;
+
+#define CAST_UINT32(x) static_cast<uint32_t>(x)

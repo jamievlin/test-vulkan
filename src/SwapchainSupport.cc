@@ -43,7 +43,7 @@ VkResult SwapchainImageSupport::createFramebuffer(
     VkFramebufferCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     createInfo.renderPass = renderPass;
-    createInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+    createInfo.attachmentCount = CAST_UINT32(attachments.size());
     createInfo.pAttachments = attachments.data();
     createInfo.width = extent.width;
     createInfo.height = extent.height;

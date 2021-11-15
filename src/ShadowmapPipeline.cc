@@ -42,7 +42,7 @@ ShadowmapPipeline::createGraphicsPipeline(std::string const& vertShaderName,
     vertInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertInputInfo.vertexBindingDescriptionCount = 1;
     vertInputInfo.pVertexBindingDescriptions = &bindingDesc;
-    vertInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribDesc.size());
+    vertInputInfo.vertexAttributeDescriptionCount = CAST_UINT32(attribDesc.size());
     vertInputInfo.pVertexAttributeDescriptions = attribDesc.data();
 
     VkPipelineInputAssemblyStateCreateInfo inputAsmStateInfo = {};
@@ -120,7 +120,7 @@ ShadowmapPipeline::createGraphicsPipeline(std::string const& vertShaderName,
 
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
     pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(descSetLayouts.size());
+    pipelineLayoutCreateInfo.setLayoutCount = CAST_UINT32(descSetLayouts.size());
     pipelineLayoutCreateInfo.pSetLayouts = descSetLayouts.data();
     pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
     pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
@@ -331,7 +331,7 @@ VkFramebuffer ShadowmapPipeline::createFrameBuffer(
     VkFramebufferCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     createInfo.renderPass = renderPass;
-    createInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+    createInfo.attachmentCount = CAST_UINT32(attachments.size());
     createInfo.pAttachments = attachments.data();
     createInfo.width = shadowResolution;
     createInfo.height = shadowResolution;
@@ -371,7 +371,7 @@ VkDescriptorSetLayout ShadowmapPipeline::createDescSetLayout()
 
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.bindingCount = CAST_UINT32(bindings.size());
     layoutInfo.pBindings = bindings.data();
 
     CHECK_VK_SUCCESS(
@@ -403,7 +403,7 @@ void ShadowmapPipeline::createDescSet(uint32_t imageSize)
 
     VDSAcreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     VDSAcreateInfo.descriptorPool = lightDirDescPool;
-    VDSAcreateInfo.descriptorSetCount = static_cast<uint32_t>(layouts.size());
+    VDSAcreateInfo.descriptorSetCount = CAST_UINT32(layouts.size());
     VDSAcreateInfo.pSetLayouts = layouts.data();
 
     lightDirSets.resize(imageSize);

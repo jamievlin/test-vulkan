@@ -211,13 +211,13 @@ VkResult WindowBase::initInstance()
 #endif
     createInfo.pApplicationInfo = &appInfo;
 #if ENABLE_VALIDATION_LAYERS == 1
-    createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+    createInfo.enabledLayerCount = CAST_UINT32(validationLayers.size());
     createInfo.ppEnabledLayerNames = validationLayers.data();
 #else
     createInfo.enabledLayerCount = 0;
 #endif
 
-    createInfo.enabledExtensionCount = static_cast<uint32_t>(extNeeded.size());
+    createInfo.enabledExtensionCount = CAST_UINT32(extNeeded.size());
     createInfo.ppEnabledExtensionNames = extNeeded.data();
 
     return vkCreateInstance(&createInfo, nullptr, &instance);
@@ -328,7 +328,7 @@ VkResult WindowBase::createLogicalDevice()
     createInfo.queueCreateInfoCount = 3;
     createInfo.pQueueCreateInfos = queues;
     createInfo.pEnabledFeatures = &feat;
-    createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExts.size());
+    createInfo.enabledExtensionCount = CAST_UINT32(deviceExts.size());
     createInfo.ppEnabledExtensionNames = deviceExts.data();
 
     VkResult result = vkCreateDevice(dev, &createInfo, nullptr, &logicalDev);
@@ -368,5 +368,5 @@ VkResult WindowBase::createAllocator()
 
 std::pair<uint32_t, uint32_t> WindowBase::size() const
 {
-    return {static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
+    return {CAST_UINT32(width), CAST_UINT32(height) };
 }
