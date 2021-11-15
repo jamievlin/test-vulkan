@@ -43,7 +43,7 @@ protected:
 
     void createShadowmapsDescPool();
     void createShadowmapsDescSets();
-    void updateShadowmapBuffer();
+    void updateShadowmapBuffer(Image::Image const& shadowMap);
 private:
     bool running = true;
     std::unique_ptr<SwapchainComponents> swapchainComponent;

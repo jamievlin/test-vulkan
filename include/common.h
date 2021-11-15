@@ -75,4 +75,6 @@ using std::nullopt;
 
 constexpr size_t MAX_FRAMES_IN_FLIGHT = 3;
 
+#define SHADOW_MAP_RESOLUTION 1024
+
 #define CAST_UINT32(x) static_cast<uint32_t>(x)

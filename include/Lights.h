@@ -21,24 +21,11 @@ struct Light
     glm::vec4 position;
     glm::vec4 parameters;
 
-    static VkShaderStageFlags stageFlags()
-    {
-        return VK_SHADER_STAGE_FRAGMENT_BIT;
-    }
-
-    static VkDescriptorSetLayoutBinding directionalLightTransfLayoutBinding(uint32_t const& binding)
-    {
-        VkDescriptorSetLayoutBinding uboLayout = {};
-        uboLayout.binding = binding;
-        uboLayout.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        uboLayout.descriptorCount = 1;
-        uboLayout.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        uboLayout.pImmutableSamplers = nullptr;
-
-        return uboLayout;
-    };
+    static VkShaderStageFlags stageFlags();
+    static VkDescriptorSetLayoutBinding directionalLightTransfLayoutBinding(uint32_t const& binding);;
 };
 
 namespace Lights
 {
+    VkDescriptorSetLayoutBinding shadowmapImgViewLayoutBinding(uint32_t const& binding);
 }

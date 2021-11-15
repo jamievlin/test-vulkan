@@ -10,7 +10,7 @@ struct PixelShaderOutput
     float4 fragColor : SV_TARGET;
 };
 
-float Fresnel(float3 ndoth)
+float Fresnel(float ndoth)
 {
     // schlick's approximation
     return f0 + (1-f0) * pow(1-ndoth, 5);
@@ -46,7 +46,7 @@ float3 BRDF(float3 viewDir, float3 lightDir, float3 normal)
     float ndoth = saturate(dot(normal, halfvec));
 
     float specularVal = DBeckmann(ndoth, roughness2) * Fresnel(ndoth) * GVal(ndotv, ndotl, roughness2) * 0.25;
-    return baseColor + specularVal;
+    return baseColor.rgb + (specularVal * float3(1,1,1));
 }
 
 float3 compute_light_point(float3 viewVec, float3 normal, float3 worldPosition, Light lig)
@@ -72,8 +72,15 @@ PixelShaderOutput main(PixelShaderInput psi)
     PixelShaderOutput pso;
     float3 normal = normalize(psi.inNormal);
     float3 viewVec = normalize(cameraPos.xyz - psi.worldPos);
-
     float3 outColor = float3(0,0,0);
+
+    float4 smapPos = mul(lightDirMatrix, float4(psi.worldPos, 1));
+    float2 smapCoord = smapPos.xy / smapPos.w;
+    smapCoord = 0.5f * (smapCoord + float2(1,1));
+    float sampledVal = depthMap.Sample(depthMapSampler, smapCoord).r;
+
+    float hit = smapPos.z / smapPos.w <= sampledVal + 0.0001 ? 1.f : 0.f;
+
     for (uint i=0; i < lightCount; ++i)
     {
         [branch] switch(lightsObj[i].lightType)
@@ -83,7 +90,7 @@ PixelShaderOutput main(PixelShaderInput psi)
             break;
 
             case DIRECTIONAL_LIGHT:
-                outColor += compute_light_dir(viewVec, normal, lightsObj[i]);
+                outColor += hit * compute_light_dir(viewVec, normal, lightsObj[i]);
             break;
         }
     }

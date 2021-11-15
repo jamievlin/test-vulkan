@@ -198,7 +198,7 @@ VkRenderPass ShadowmapPipeline::createRenderPass(VkPhysicalDevice const& physDev
     depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
 
     VkAttachmentReference depthAttachmentRef = {};
     depthAttachmentRef.attachment = 0;
@@ -260,7 +260,7 @@ ShadowmapPipeline::ShadowmapPipeline(
         size_t const& swpchainImgCount,
         std::vector<VkDescriptorSetLayout>& descSetLayouts,
         VkCommandPool& cmdPool) :
-        AVkGraphicsBase(device), cmdPool(cmdPool)
+        AVkGraphicsBase(device), cmdPool(cmdPool), shadowMapRes(shadowResolution)
 {
     // descSetLayout = createDescSetLayout();
     renderPass = createRenderPass(physDev);
@@ -358,6 +358,25 @@ ShadowmapPipeline::~ShadowmapPipeline()
         vkDestroyPipeline(getLogicalDev(), pipeline, nullptr);
         vkDestroyPipelineLayout(getLogicalDev(), pipelineLayout, nullptr);
     }
+}
+
+VkRenderPassBeginInfo ShadowmapPipeline::renderPassBeginInfo(VkClearValue const& clearVal) const
+{
+    VkRect2D renderArea = {};
+    renderArea.offset = {0, 0};
+    renderArea.extent.width = shadowMapRes;
+    renderArea.extent.height = shadowMapRes;
+
+    VkRenderPassBeginInfo smapRenderPassBeginInfo = {};
+    smapRenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    smapRenderPassBeginInfo.renderPass = renderPass;
+    smapRenderPassBeginInfo.framebuffer = shadowmapFramebuffer;
+    smapRenderPassBeginInfo.renderArea = renderArea;
+
+    smapRenderPassBeginInfo.clearValueCount = 1;
+    smapRenderPassBeginInfo.pClearValues = &clearVal;
+
+    return smapRenderPassBeginInfo;
 }
 
 /*

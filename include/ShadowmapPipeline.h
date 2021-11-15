@@ -30,6 +30,7 @@ public:
     std::vector<VkCommandBuffer> smapCmdBuffer;
 
 
+
     ShadowmapPipeline() = default;
     ShadowmapPipeline(
             VkDevice* device,
@@ -52,6 +53,9 @@ public:
     //         std::vector<VkDescriptorSet>& meshUnifDescSets,
     //        DynUniformObjBuffer<MeshUniform> const& unif);
 
+    [[nodiscard]]
+    VkRenderPassBeginInfo renderPassBeginInfo(VkClearValue const& clearVal) const;
+
 protected:
     void createGraphicsPipeline(
             std::string const& vertShaderName,
@@ -70,5 +74,6 @@ protected:
 
 private:
     VkCommandPool& cmdPool;
+    uint32_t shadowMapRes;
 };
 

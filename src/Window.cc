@@ -91,7 +91,7 @@ Window::Window(size_t const& width,
     shadowmapGraphicsPipeline = std::make_unique<ShadowmapPipeline>(
             &logicalDev, &allocator, dev,
             helpers::searchPath("shadowmap_dir.vert.spv"),
-            1024,
+            SHADOW_MAP_RESOLUTION,
             swapchainComponent->imageCount(),
             shadowDescSetLayout,
             cmdPool);
@@ -116,9 +116,8 @@ Window::Window(size_t const& width,
     }
     // shadowmapGraphicsPipeline->configureBuffers(uniformData->meshDescriptorSets, *meshUniformGroup);
     // uniformData->configureBuffers(0, shadowmapGraphicsPipeline->depthTargets[0]);
+    updateShadowmapBuffer(*shadowmapGraphicsPipeline->depthTarget);
     uniformData->configureMeshBuffers(0, *meshUniformGroup);
-
-    updateShadowmapBuffer();
 }
 
 int Window::mainLoop()
@@ -176,20 +175,10 @@ void Window::recordShadowmapCmd(VkCommandBuffer& smapBuf, uint32_t imageIdx, VkF
             vkBeginCommandBuffer(smapBuf, &beginInfo),
             "Failed to begin buffer recording!");
 
-    VkRenderPassBeginInfo smapRenderPassBeginInfo = {};
-    smapRenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    smapRenderPassBeginInfo.renderPass = shadowmapGraphicsPipeline->renderPass;
-    smapRenderPassBeginInfo.framebuffer = shadowmapGraphicsPipeline->shadowmapFramebuffer;
-    smapRenderPassBeginInfo.renderArea.offset = {0,0};
-    smapRenderPassBeginInfo.renderArea.extent.width = 1024;
-    smapRenderPassBeginInfo.renderArea.extent.height = 1024;
+    VkClearValue smapClearValue;
+    smapClearValue.depthStencil = {1.0f, 0};
 
-    VkClearValue smapClearValue[1];
-    // smapClearValue[0].color = {0.f, 0.f, 0.f, 1.f};
-    smapClearValue[0].depthStencil = {1.0f, 0};
-
-    smapRenderPassBeginInfo.clearValueCount = 1;
-    smapRenderPassBeginInfo.pClearValues = smapClearValue;
+    auto smapRenderPassBeginInfo = shadowmapGraphicsPipeline->renderPassBeginInfo(smapClearValue);
 
     vkCmdBeginRenderPass(smapBuf, &smapRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(smapBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmapGraphicsPipeline->pipeline);
@@ -198,8 +187,7 @@ void Window::recordShadowmapCmd(VkCommandBuffer& smapBuf, uint32_t imageIdx, VkF
 
     for (auto& drawable : drawables)
     {
-        uint32_t offset_val = meshUniformGroup->placeNextData(drawable.uniform);
-        offsets.push_back(offset_val);
+        offsets.push_back(meshUniformGroup->placeNextData(drawable.uniform));
     }
 
     VkDescriptorSet descSets[1] = {uniformData->descriptorSets[imageIdx]};
@@ -224,12 +212,10 @@ void Window::recordShadowmapCmd(VkCommandBuffer& smapBuf, uint32_t imageIdx, VkF
                 1, offsets.data() + i);
 
         VkBuffer vertBuffers[] = { mesh.buf.vertexBuffer };
-
         VkDeviceSize vertoffsets[1] = {0};
         vkCmdBindVertexBuffers(smapBuf, 0, 1, vertBuffers, vertoffsets);
         vkCmdBindIndexBuffer(smapBuf, mesh.buf.vertexBuffer, mesh.idxOffset(), VK_INDEX_TYPE_UINT32);
-        // actual drawing command :)
-        // vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
+
         vkCmdDrawIndexed(smapBuf, CAST_UINT32(mesh.idxCount()), 1, 0, 0, 0);
     }
 
@@ -629,7 +615,9 @@ void Window::setUniforms(UniformObjBuffer<UniformObjects>& bufObject)
 
     glm::vec3 dir(1,0,-1);
 
-    ubo.lightDirMatrix = glm::lookAt(
+    glm::mat4 orthomat = glm::ortho(-1.f, 1.f, -1.f, 1.f, -2.f, 2.f);
+
+    ubo.lightDirMatrix = orthomat * glm::lookAt(
             -0.5f * dir,
             O,
             -Zup);
@@ -676,12 +664,15 @@ void Window::updateFrame(float const& deltaTime)
 
 void Window::createShadowmapsDescSets()
 {
-    auto layoutBinding = StorageBufferArray<Light>::DescriptorSetLayout(0);
+    std::array<VkDescriptorSetLayoutBinding, 2> layoutBindings = {
+            StorageBufferArray<Light>::DescriptorSetLayout(0),
+            Lights::shadowmapImgViewLayoutBinding(1)
+    };
 
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = 1;
-    layoutInfo.pBindings = &layoutBinding;
+    layoutInfo.bindingCount = CAST_UINT32(layoutBindings.size());
+    layoutInfo.pBindings = layoutBindings.data();
 
     CHECK_VK_SUCCESS(
             vkCreateDescriptorSetLayout(
@@ -704,22 +695,26 @@ void Window::createShadowmapsDescSets()
 
 void Window::createShadowmapsDescPool()
 {
-    VkDescriptorPoolSize poolSize[1] = {{}};
-    poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    std::array<VkDescriptorPoolSize, 2> poolSize = {};
+    poolSize[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     poolSize[0].descriptorCount = 1;
+
+    poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSize[1].descriptorCount = 1;
+
 
     VkDescriptorPoolCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    createInfo.poolSizeCount = 1;
-    createInfo.pPoolSizes = poolSize;
-    createInfo.maxSets = 1;
+    createInfo.poolSizeCount = poolSize.size();
+    createInfo.pPoolSizes = poolSize.data();
+    createInfo.maxSets = 2;
     CHECK_VK_SUCCESS(
             vkCreateDescriptorPool(logicalDev, &createInfo, nullptr, &lightShadowmapDesc.lightsSmapDescPool),
             "Cannot create descriptor pools for shadow maps!"
     );
 }
 
-void Window::updateShadowmapBuffer()
+void Window::updateShadowmapBuffer(Image::Image const& shadowMap)
 {
     VkDescriptorBufferInfo sboBufferInfo = {};
     sboBufferInfo.buffer = lightShadowmapDesc.lightStorage->vertexBuffer;
@@ -735,7 +730,23 @@ void Window::updateShadowmapBuffer()
     descriptorWriteLight.descriptorCount = 1;
     descriptorWriteLight.pBufferInfo = &sboBufferInfo;
 
-    std::array<VkWriteDescriptorSet, 1> descSets = {descriptorWriteLight};
+    // image
+
+    VkDescriptorImageInfo imageInfo = {};
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
+    imageInfo.imageView = shadowMap.imgView;
+    imageInfo.sampler = shadowMap.baseSampler;
+
+    VkWriteDescriptorSet descriptorWriteImg = {};
+    descriptorWriteImg.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWriteImg.dstSet = lightShadowmapDesc.lightAndShadowmapsDescSets;
+    descriptorWriteImg.dstBinding = 1;
+    descriptorWriteImg.dstArrayElement = 0;
+    descriptorWriteImg.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorWriteImg.descriptorCount = 1;
+    descriptorWriteImg.pImageInfo = &imageInfo;
+
+    std::array<VkWriteDescriptorSet, 2> descSets = {descriptorWriteLight, descriptorWriteImg};
 
     vkUpdateDescriptorSets(
             logicalDev,
