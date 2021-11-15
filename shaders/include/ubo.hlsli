@@ -5,6 +5,7 @@ cbuffer UBO
     float4 cameraPos;
     float4x4 proj;
     float4x4 view;
+    float4x4 lightDirMatrix;
 };
 
 [[vk::binding(0,1)]]

@@ -18,6 +18,9 @@ FrameSemaphores::FrameSemaphores(VkDevice* logicalDev, VkFenceCreateFlags const&
     CHECK_VK_SUCCESS(
             vkCreateSemaphore(*logicalDev, &createInfo, nullptr, &renderFinished),
             CREATE_SEMAPHORE_FAILED);
+    CHECK_VK_SUCCESS(
+            vkCreateSemaphore(*logicalDev, &createInfo, nullptr, &shadowmapFinished),
+            CREATE_SEMAPHORE_FAILED);
 
     VkFenceCreateInfo fenceCreateInfo = {};
     fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -34,6 +37,7 @@ FrameSemaphores::FrameSemaphores(FrameSemaphores&& frameSem) noexcept:
     imgAvailable = frameSem.imgAvailable;
     renderFinished = frameSem.renderFinished;
     inFlight = frameSem.inFlight;
+    shadowmapFinished = frameSem.shadowmapFinished;
 
     frameSem.imgAvailable = VK_NULL_HANDLE;
     frameSem.renderFinished = VK_NULL_HANDLE;
@@ -45,6 +49,7 @@ FrameSemaphores& FrameSemaphores::operator=(FrameSemaphores&& frameSem) noexcept
     AVkGraphicsBase::operator=(std::move(frameSem));
     imgAvailable = frameSem.imgAvailable;
     renderFinished = frameSem.renderFinished;
+    shadowmapFinished = frameSem.shadowmapFinished;
 
     frameSem.imgAvailable = VK_NULL_HANDLE;
     frameSem.renderFinished = VK_NULL_HANDLE;
@@ -57,6 +62,7 @@ FrameSemaphores::~FrameSemaphores()
 {
     if (initialized())
     {
+        vkDestroySemaphore(getLogicalDev(), shadowmapFinished, nullptr);
         vkDestroySemaphore(getLogicalDev(), imgAvailable, nullptr);
         vkDestroySemaphore(getLogicalDev(), renderFinished, nullptr);
         vkDestroyFence(getLogicalDev(), inFlight, nullptr);

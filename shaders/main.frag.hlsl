@@ -8,10 +8,10 @@ struct PixelShaderOutput
     float4 fragColor : SV_TARGET;
 };
 
-[[vk::binding(1)]]
+[[vk::binding(1,0)]]
 Texture2D<float4> tex;
 
-[[vk::binding(1)]]
+[[vk::binding(1,0)]]
 SamplerState sLinear;
 
 float Fresnel(float3 ndoth)
@@ -59,17 +59,16 @@ float3 compute_light_point(float3 viewVec, float3 normal, float3 worldPosition, 
     float attenuation = rcp(dot(lightDistance, lightDistance));
 
     float3 lightColor = lig.intensity * lig.color.rgb * attenuation;
-
     float lightDirDot = saturate(dot(normalize(lightDistance), normal));
-    return BRDF(viewVec, normalize(lightDistance), normal) * lightColor * lightDirDot;
+    return max(BRDF(viewVec, normalize(lightDistance), normal) * lightColor * lightDirDot, 0);
 }
 
 float3 compute_light_dir(float3 viewVec, float3 normal, Light lig)
 {
-    float3 lightDistance = normalize(lig.position.xyz);
+    float3 lightDistance = -normalize(lig.position.xyz);
     float3 lightColor = lig.intensity * lig.color.rgb;
     float lightDirDot = saturate(dot(lightDistance, normal));
-    return BRDF(viewVec, lightDistance, normal) * lightColor * lightDirDot;
+    return max(BRDF(viewVec, lightDistance, normal) * lightColor * lightDirDot, 0);
 }
 
 PixelShaderOutput main(PixelShaderInput psi)
@@ -93,6 +92,6 @@ PixelShaderOutput main(PixelShaderInput psi)
         }
     }
 
-    pso.fragColor = float4(outColor, 1); // float4(multValue * psi.inColor,1);
+    pso.fragColor = saturate(float4(outColor, 1)); // float4(multValue * psi.inColor,1);
     return pso;
 }

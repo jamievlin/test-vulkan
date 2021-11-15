@@ -9,6 +9,7 @@ class FrameSemaphores : public AVkGraphicsBase
 {
 public:
     VkSemaphore imgAvailable = VK_NULL_HANDLE;
+    VkSemaphore shadowmapFinished = VK_NULL_HANDLE;
     VkSemaphore renderFinished = VK_NULL_HANDLE;
     VkFence inFlight = VK_NULL_HANDLE;
 

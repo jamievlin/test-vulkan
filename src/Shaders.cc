@@ -51,4 +51,11 @@ namespace Shaders
     {
         return createShaderModule(logicalDev, readBytecode(fileName));
     }
+
+    VkShaderModule createShaderModuleChecked(VkDevice const& logicalDev, std::string const& fileName)
+    {
+        auto [module, ret] = createShaderModule(logicalDev, readBytecode(fileName));
+        CHECK_VK_SUCCESS(ret, "Cannot create shader module!");
+        return module;
+    }
 };

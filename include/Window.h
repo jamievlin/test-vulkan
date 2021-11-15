@@ -7,6 +7,8 @@
 #include "WindowBase.h"
 #include "Mesh.h"
 #include "Drawable.h"
+#include "ShadowmapPipeline.h"
+#include "DisposableCmdBuffer.h"
 
 class Window : public WindowBase
 {
@@ -29,6 +31,7 @@ protected:
     VkResult createTransferCmdPool();
 
     void recordCmd(uint32_t imageIdx, VkFence& submissionFence);
+    void recordShadowmapCmd(VkCommandBuffer& smapBuf, uint32_t imageIdx, VkFence& submissionFence);
     void drawFrame();
     void resetSwapChain();
 
@@ -45,6 +48,8 @@ private:
 
     std::unique_ptr<SwapchainImageBuffers> uniformData;
     std::unique_ptr<GraphicsPipeline> graphicsPipeline;
+
+    std::unique_ptr<ShadowmapPipeline> shadowmapGraphicsPipeline;
 
     std::unique_ptr<DynUniformObjBuffer<MeshUniform>> meshUniformGroup;
 

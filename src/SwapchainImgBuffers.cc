@@ -38,7 +38,9 @@ void SwapchainImageBuffers::configureBuffers(uint32_t const& binding, Image::Ima
 
         std::vector<VkWriteDescriptorSet> descriptorWriteInfo = {
                 UniformObjects::descriptorWrite(0, unifBuffers[i].bufferInfo(), descriptorSets[i]),
-                descriptorWriteImg, descriptorWriteSBO};
+                descriptorWriteImg,
+                descriptorWriteSBO
+        };
 
         vkUpdateDescriptorSets(
                 getLogicalDev(), static_cast<uint32_t>(descriptorWriteInfo.size()),
@@ -55,18 +57,11 @@ void SwapchainImageBuffers::configureMeshBuffers(uint32_t const& binding, DynUni
         sboBufferInfo.offset = 0;
         sboBufferInfo.range = sizeof(MeshUniform);
 
-        VkWriteDescriptorSet descriptorWriteSBO = {};
-        descriptorWriteSBO.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWriteSBO.dstSet = meshDescriptorSets[i];
-        descriptorWriteSBO.dstBinding = 0;
-        descriptorWriteSBO.dstArrayElement = 0;
-        descriptorWriteSBO.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        descriptorWriteSBO.descriptorCount = 1;
-        descriptorWriteSBO.pBufferInfo = &sboBufferInfo;
-
+        VkWriteDescriptorSet writeDescSet = MeshUniform::descriptorWrite(0, sboBufferInfo, meshDescriptorSets[i]);
         vkUpdateDescriptorSets(
-                getLogicalDev(), 1,
-                &descriptorWriteSBO, 0, nullptr);
+                getLogicalDev(),
+                1, &writeDescSet,
+                0, nullptr);
     }
 }
 

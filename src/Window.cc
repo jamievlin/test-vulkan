@@ -72,6 +72,17 @@ Window::Window(size_t const& width,
             &logicalDev, &allocator, dev, *swapchainComponent, img, 0
     );
 
+    shadowmapGraphicsPipeline = std::make_unique<ShadowmapPipeline>(
+            &logicalDev, &allocator, dev,
+            helpers::searchPath("shadowmap_dir.vert.spv"),
+            1024,
+            swapchainComponent->imageCount(),
+            std::vector<VkDescriptorSetLayout> {
+                    uniformData->descriptorSetLayout,
+                    uniformData->meshDescriptorSetLayout},
+            cmdPool);
+
+
     graphicsPipeline = std::make_unique<GraphicsPipeline>(
             &logicalDev, dev, &cmdPool,
             helpers::searchPath("main.vert.spv"), helpers::searchPath("main.frag.spv"),
@@ -85,10 +96,9 @@ Window::Window(size_t const& width,
     {
         frameSemaphores.emplace_back(&logicalDev);
     }
-
+    // shadowmapGraphicsPipeline->configureBuffers(uniformData->meshDescriptorSets, *meshUniformGroup);
+    // uniformData->configureBuffers(0, shadowmapGraphicsPipeline->depthTargets[0]);
     uniformData->configureMeshBuffers(0, *meshUniformGroup);
-
-
 }
 
 int Window::mainLoop()
@@ -116,6 +126,7 @@ int Window::mainLoop()
 
 Window::~Window()
 {
+    shadowmapGraphicsPipeline.reset();
     meshUniformGroup.reset();
     graphicsPipeline.reset();
     swapchainComponent.reset();
@@ -128,6 +139,91 @@ void Window::initCallbacks()
 {
     glfwSetWindowUserPointer(window, this);
     glfwSetWindowSizeCallback(window, Window::onWindowSizeChange);
+}
+
+void Window::recordShadowmapCmd(VkCommandBuffer& smapBuf, uint32_t imageIdx, VkFence& submissionFence)
+{
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = 0;
+    beginInfo.pInheritanceInfo = nullptr;
+
+    CHECK_VK_SUCCESS(
+            vkBeginCommandBuffer(smapBuf, &beginInfo),
+            "Failed to begin buffer recording!");
+
+    VkRenderPassBeginInfo smapRenderPassBeginInfo = {};
+    smapRenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    smapRenderPassBeginInfo.renderPass = shadowmapGraphicsPipeline->renderPass;
+    smapRenderPassBeginInfo.framebuffer = shadowmapGraphicsPipeline->shadowmapFramebuffer;
+    smapRenderPassBeginInfo.renderArea.offset = {0,0};
+    smapRenderPassBeginInfo.renderArea.extent.width = 1024;
+    smapRenderPassBeginInfo.renderArea.extent.height = 1024;
+
+    VkClearValue smapClearValue[1];
+    // smapClearValue[0].color = {0.f, 0.f, 0.f, 1.f};
+    smapClearValue[0].depthStencil = {1.0f, 0};
+
+    smapRenderPassBeginInfo.clearValueCount = 1;
+    smapRenderPassBeginInfo.pClearValues = smapClearValue;
+
+    vkCmdBeginRenderPass(smapBuf, &smapRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(smapBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmapGraphicsPipeline->pipeline);
+
+    std::vector<uint32_t> offsets;
+
+    for (auto& drawable : drawables)
+    {
+        uint32_t offset_val = meshUniformGroup->placeNextData(drawable.uniform);
+        offsets.push_back(offset_val);
+    }
+
+    VkDescriptorSet descSets[1] = {uniformData->descriptorSets[imageIdx]};
+    vkCmdBindDescriptorSets(
+            smapBuf,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            shadowmapGraphicsPipeline->pipelineLayout,
+            0,
+            1, descSets,
+            0, nullptr);
+
+    for (int i = 0; i < drawables.size(); ++i)
+    {
+        Mesh& mesh = drawables[i].getMesh();
+
+        vkCmdBindDescriptorSets(
+                smapBuf,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                shadowmapGraphicsPipeline->pipelineLayout,
+                1,
+                1, &uniformData->meshDescriptorSets[imageIdx],
+                1, offsets.data() + i);
+
+        VkBuffer vertBuffers[] = { mesh.buf.vertexBuffer };
+
+        VkDeviceSize vertoffsets[1] = {0};
+        vkCmdBindVertexBuffers(smapBuf, 0, 1, vertBuffers, vertoffsets);
+        vkCmdBindIndexBuffer(smapBuf, mesh.buf.vertexBuffer, mesh.idxOffset(), VK_INDEX_TYPE_UINT32);
+        // actual drawing command :)
+        // vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
+        vkCmdDrawIndexed(smapBuf, static_cast<uint32_t>(mesh.idxCount()), 1, 0, 0, 0);
+    }
+
+    /*
+    shadowmapGraphicsPipeline->depthTargets[imageIdx].cmdTransitionLayout(
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_GENERAL,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+            0,
+            VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            smapBuf,
+            VK_IMAGE_ASPECT_DEPTH_BIT);
+            */
+
+    vkCmdEndRenderPass(smapBuf);
+    vkEndCommandBuffer(smapBuf);
+    // vkEndCommandBuffer(smapBuf.commandBuffer());
 }
 
 void Window::recordCmd(uint32_t imageIdx, VkFence& submissionFence)
@@ -147,7 +243,6 @@ void Window::recordCmd(uint32_t imageIdx, VkFence& submissionFence)
     renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassBeginInfo.renderPass = swapchainComponent->renderPass;
     renderPassBeginInfo.framebuffer = swapchainComponent->swapchainSupport[imageIdx].frameBuffer;
-
     renderPassBeginInfo.renderArea.offset = {0,0};
     renderPassBeginInfo.renderArea.extent = swapchainComponent->swapchainExtent;
 
@@ -157,11 +252,18 @@ void Window::recordCmd(uint32_t imageIdx, VkFence& submissionFence)
 
     renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
     renderPassBeginInfo.pClearValues = clearValues.data();
-
     vkCmdBeginRenderPass(cmdBuf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipeline);
 
+    std::vector<uint32_t> offsets;
+    for (auto& drawable : drawables)
+    {
+        uint32_t offset_val = meshUniformGroup->placeNextData(drawable.uniform);
+        offsets.push_back(offset_val);
+    }
+
     VkDescriptorSet descSets[1] = {uniformData->descriptorSets[imageIdx]};
+
     vkCmdBindDescriptorSets(
             cmdBuf,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -170,13 +272,9 @@ void Window::recordCmd(uint32_t imageIdx, VkFence& submissionFence)
             1, descSets,
             0, nullptr);
 
-    meshUniformGroup->beginFenceGroup(imageIdx, submissionFence);
-
-    for (auto& drawable : drawables)
+    for (int i = 0; i < drawables.size(); ++i)
     {
-        Mesh& mesh = drawable.getMesh();
-        uint32_t offset_val = meshUniformGroup->placeNextData(drawable.uniform);
-        uint32_t offsetvals[1] = { offset_val };
+        Mesh& mesh = drawables[i].getMesh();
 
         vkCmdBindDescriptorSets(
                 cmdBuf,
@@ -184,11 +282,11 @@ void Window::recordCmd(uint32_t imageIdx, VkFence& submissionFence)
                 graphicsPipeline->pipelineLayout,
                 1,
                 1, &uniformData->meshDescriptorSets[imageIdx],
-                1, offsetvals);
+                1, offsets.data() + i);
 
         VkBuffer vertBuffers[] = { mesh.buf.vertexBuffer };
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(cmdBuf, 0, 1, vertBuffers, offsets);
+        VkDeviceSize vertoffsets[] = {0};
+        vkCmdBindVertexBuffers(cmdBuf, 0, 1, vertBuffers, vertoffsets);
         vkCmdBindIndexBuffer(cmdBuf, mesh.buf.vertexBuffer, mesh.idxOffset(), VK_INDEX_TYPE_UINT32);
         // actual drawing command :)
         // vkCmdDraw(cmdBuf, vertexBuffer->getSize(), 1, 0, 0);
@@ -196,6 +294,7 @@ void Window::recordCmd(uint32_t imageIdx, VkFence& submissionFence)
     }
 
     vkCmdEndRenderPass(cmdBuf);
+
 
     depthBuffer.cmdTransitionLayout(
             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -208,6 +307,7 @@ void Window::recordCmd(uint32_t imageIdx, VkFence& submissionFence)
             Image::hasStencilComponent(Image::findDepthFormat(dev)) ?
             VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
             VK_IMAGE_ASPECT_DEPTH_BIT);
+
     CHECK_VK_SUCCESS(
             vkEndCommandBuffer(cmdBuf),
             "Cannot end command buffer!");
@@ -220,6 +320,7 @@ void Window::drawFrame()
     uint32_t imgIndex;
     VkSemaphore& imgAvailable = frameSemaphores[currentFrame].imgAvailable;
     VkSemaphore& renderFinished = frameSemaphores[currentFrame].imgAvailable;
+    VkSemaphore& smapFinished = frameSemaphores[currentFrame].renderFinished;
     VkFence& inFlightFence = frameSemaphores[currentFrame].inFlight;
 
     vkWaitForFences(logicalDev, 1, &inFlightFence, VK_TRUE, UINT64_MAX);
@@ -251,15 +352,43 @@ void Window::drawFrame()
     }
     imgIdxFence = inFlightFence;
     // at this point, image is fully ours.
+    meshUniformGroup->beginFenceGroup(imgIndex, inFlightFence);
 
+    // primary drawing
     vkResetCommandBuffer(graphicsPipeline->cmdBuffers[imgIndex], 0);
+    vkResetCommandBuffer(shadowmapGraphicsPipeline->smapCmdBuffer[imgIndex], 0);
+
+    recordShadowmapCmd(shadowmapGraphicsPipeline->smapCmdBuffer[imgIndex], imgIndex, inFlightFence);
     recordCmd(imgIndex, inFlightFence);
+
+    setUniforms((*uniformData)[imgIndex].first);
+    setLights(uniformData->lightSBOs[imgIndex]);
+
+    VkSubmitInfo smapSubmitInfo = {};
+    smapSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    VkSemaphore smapWaitSems[] = { imgAvailable };
+    VkPipelineStageFlags smapWaitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
+    smapSubmitInfo.waitSemaphoreCount = 1;
+    smapSubmitInfo.pWaitSemaphores = smapWaitSems;
+    smapSubmitInfo.pWaitDstStageMask = smapWaitStages;
+
+    smapSubmitInfo.commandBufferCount = 1;
+    smapSubmitInfo.pCommandBuffers = &shadowmapGraphicsPipeline->smapCmdBuffer[imgIndex];
+
+    VkSemaphore smapSignals[] = { smapFinished };
+    smapSubmitInfo.signalSemaphoreCount = 1;
+    smapSubmitInfo.pSignalSemaphores = smapSignals;
+
+    vkResetFences(logicalDev, 1, &inFlightFence);
+    vkQueueSubmit(graphicsQueue, 1, &smapSubmitInfo, nullptr);
 
     // wait then for img to become available
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    VkSemaphore waitSems[] = { imgAvailable };
-    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    VkSemaphore waitSems[] = { smapFinished };
+    VkPipelineStageFlags waitStages[] = {
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = waitSems;
@@ -276,11 +405,7 @@ void Window::drawFrame()
     // we would have resetted /before/ waiting for fence again, which causes
     // an infinite wait (as there's nothing to render and /signal/ the fence).
 
-    setUniforms((*uniformData)[imgIndex].first);
-    setLights(uniformData->lightSBOs[imgIndex]);
 
-
-    vkResetFences(logicalDev, 1, &inFlightFence);
     CHECK_VK_SUCCESS(
             vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence),
             "Cannot submit draw queue!");
@@ -307,6 +432,7 @@ void Window::drawFrame()
         throw std::runtime_error("Cannot present image!");
     }
 
+    // vkDestroySemaphore(logicalDev, shadowMapFinished, nullptr);
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
@@ -469,6 +595,12 @@ void Window::setUniforms(UniformObjBuffer<UniformObjects>& bufObject)
     ubo.proj = projectMat;
     ubo.cameraPos = glm::vec4(cameraPos, 1);
 
+    glm::vec3 dir(1,0,-1);
+
+    ubo.lightDirMatrix = glm::lookAt(
+            -0.5f * dir,
+            O,
+            -Zup);
     CHECK_VK_SUCCESS(bufObject.loadData(ubo), "Cannot set uniforms!");
 }
 
@@ -488,7 +620,7 @@ void Window::setLights(StorageBufferArray<Light>& storageObj)
     li[1].intensity = 2.f;
 
     li[2].lightType = LightType::DIRECTIONAL_LIGHT;
-    li[2].position = glm::vec4(1,1,1,0);
+    li[2].position = glm::vec4(1,0,-1,0);
     li[2].color = glm::vec4(1,1,0,1);
     li[2].intensity = 1.f;
 
@@ -509,3 +641,5 @@ void Window::updateFrame(float const& deltaTime)
 
     drawables[0].uniform.setModelMatrix(glm::rotate(baseMat, -totalTime / 1000.0f, glm::vec3(0,1,0)));
 }
+
+

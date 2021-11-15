@@ -12,12 +12,8 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
         std::vector<VkDescriptorSetLayout> const& descriptorSetLayout,
         bool enableDepthTest)
 {
-    auto [vertShader, ret] = Shaders::createShaderModule(getLogicalDev(), vertShaderName);
-    auto [fragShader, ret2] = Shaders::createShaderModule(getLogicalDev(), fragShaderName);
-    if (ret != VK_SUCCESS or ret2 != VK_SUCCESS)
-    {
-        throw std::runtime_error("Cannot create shader");
-    }
+    auto vertShader = Shaders::createShaderModuleChecked(getLogicalDev(), vertShaderName);
+    auto fragShader = Shaders::createShaderModuleChecked(getLogicalDev(), fragShaderName);
 
     VkPipelineShaderStageCreateInfo vertShaderInfo = {};
     vertShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;

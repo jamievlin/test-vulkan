@@ -14,6 +14,7 @@ struct UniformObjects
     VEC4_ALIGN glm::vec4 cameraPos;
     glm::mat4 proj;
     glm::mat4 view;
+    glm::mat4 lightDirMatrix;
     static VkDescriptorSetLayoutBinding descriptorSetLayout(uint32_t binding=0);
     static VkWriteDescriptorSet descriptorWrite(
             uint32_t const& binding,
@@ -30,6 +31,10 @@ struct MeshUniform
 
 
     static VkDescriptorSetLayoutBinding descriptorSetLayout(uint32_t binding=0);
+    static VkWriteDescriptorSet descriptorWrite(
+            uint32_t const& binding,
+            VkDescriptorBufferInfo const& bufferInfo,
+            VkDescriptorSet& dest);
 
     MeshUniform() = default;
     explicit MeshUniform(glm::mat4 const& model) : model(model), modelInvDual(glm::inverseTranspose(model)) {}

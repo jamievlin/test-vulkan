@@ -53,3 +53,21 @@ void MeshUniform::setModelMatrix(glm::mat4 const& newModel)
     model = newModel;
     computeInvDual();
 }
+
+VkWriteDescriptorSet
+MeshUniform::descriptorWrite(
+        uint32_t const& binding,
+        VkDescriptorBufferInfo const& bufferInfo,
+        VkDescriptorSet& dest)
+{
+    VkWriteDescriptorSet descriptorWrite = {};
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.dstBinding = binding;
+    descriptorWrite.dstSet = dest;
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+
+    return descriptorWrite;
+}
