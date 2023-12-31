@@ -2,33 +2,8 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
 project(vkTest)
 set(CMAKE_CXX_STANDARD 17)
 
-# Debugging symbols. g++/clang++ for linux, MSVC for windows
-if (${CMAKE_BUILD_TYPE} MATCHES Debug)
-    if (WIN32)
-        string(APPEND CMAKE_CXX_FLAGS " /Zi")
-    else()
-        string(APPEND CMAKE_CXX_FLAGS " -Og -g")
-    endif()
-    set(COMPILE_DEFINITIONS DEBUG)
-elseif (${CMAKE_BUILD_TYPE} MATCHES Release)
-    if (WIN32)
-        string(APPEND CMAKE_CXX_FLAGS " /O2")
-    else()
-        string(APPEND CMAKE_CXX_FLAGS " -O3")
-    endif()
-    set(COMPILE_DEFINITIONS RELEASE)
-endif()
-
-# Other compiler defintions
-if (WIN32)
-    string(APPEND CMAKE_CXX_FLAGS " /EHsc /W3")
-else()
-    string(APPEND CMAKE_CXX_FLAGS " -Wall")
-endif (WIN32)
-
 file(GLOB SOURCES "src/*.cc")
-file(GLOB HEADERS "include/*.h")
-add_executable(vkTest ${SOURCES} ${HEADERS})
+add_executable(vkTest ${SOURCES})
 
 list(APPEND INCLUDE_DIRS include/)
 # For vulkan validation layers
@@ -36,31 +11,37 @@ if (ENABLE_VALIDATION_LAYERS)
     list(APPEND COMPILE_DEFINITIONS ENABLE_VALIDATION_LAYERS)
 endif(ENABLE_VALIDATION_LAYERS)
 
-
-find_path(PNGPP_PATH "png++/color.hpp")
-find_path(GLM_PATH glm/glm.hpp)
-list(APPEND INCLUDE_DIRS ${GLM_PATH} ${PNGPP_PATH})
-
-if (WIN32)
-    find_package(unofficial-vulkan-memory-allocator REQUIRED)
-endif()
-
 find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
+find_package(PNG REQUIRED)
+find_package(glm CONFIG REQUIRED)
+find_path(PNGPP_PATH "png++/color.hpp")
+list(APPEND INCLUDE_DIRS ${PNGPP_PATH})
 
-if (WIN32)
-    find_package(libpng REQUIRED)
-endif()
+find_package(
+        Boost
+        REQUIRED
+        COMPONENTS regex
+)
 
-if (UNIX)
-    list(APPEND INCLUDE_DIRS "./contrib/vkmemalloc/include")
-endif()
+include(FetchContent)
 
-find_package(Boost REQUIRED
-        COMPONENTS regex)
+FetchContent_Declare(
+        VulkanMemoryAllocator
+        GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+        GIT_TAG master
+)
+FetchContent_MakeAvailable(VulkanMemoryAllocator)
 
-list(APPEND INCLUDE_DIRS ${Vulkan_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
-set(LIBRARIES ${Vulkan_LIBRARIES} ${Boost_LIBRARIES} glfw png)
+
+set(LIBRARIES
+        Vulkan::Vulkan
+        Boost::boost Boost::regex
+        glm::glm
+        PNG::PNG
+        GPUOpen::VulkanMemoryAllocator
+        glfw
+)
 
 # Shader compilation
 file(GLOB SHADERS **/*.hlsl **/*.glsl)
@@ -91,7 +72,7 @@ foreach(shaderFile IN LISTS SHADERS)
 
     # using glslc
 
-if(${CMAKE_VERSION} VERSION_GREATER "3.20.0") 
+if(${CMAKE_VERSION} VERSION_GREATER "3.20.0")
     set(GLSLC_CMD glslc
             ${GLSLC_FULL_FLAGS}
             -MD
@@ -130,5 +111,5 @@ add_custom_target(shaders
 
 add_dependencies(vkTest shaders)
 target_link_libraries(vkTest PRIVATE ${LIBRARIES})
-target_include_directories(vkTest PUBLIC ${INCLUDE_DIRS})
-target_compile_definitions(vkTest PUBLIC ${COMPILE_DEFINITIONS})
+target_include_directories(vkTest PRIVATE ${INCLUDE_DIRS})
+target_compile_definitions(vkTest PRIVATE ${COMPILE_DEFINITIONS})
