@@ -5,9 +5,7 @@
 #include "dbgCallBacks.h"
 #endif
 
-const std::vector<char const*> requiredDevExtension = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
-};
+std::vector<char const*> const requiredDevExtension = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
 std::vector<char const*> getRequiredExts()
 {
@@ -27,15 +25,15 @@ std::vector<char const*> getRequiredDeviceExts()
 {
     std::vector<char const*> extensions;
     std::copy(
-            requiredDevExtension.begin(), requiredDevExtension.end(),
-            std::back_inserter(extensions));
+        requiredDevExtension.begin(), requiredDevExtension.end(), std::back_inserter(extensions)
+    );
 
     return extensions;
 }
 
 bool checkDeviceExtensionSupport(
-        VkPhysicalDevice const& dev,
-        std::vector<char const*> const& requiredExts=requiredDevExtension)
+    VkPhysicalDevice const& dev, std::vector<char const*> const& requiredExts = requiredDevExtension
+)
 {
     uint32_t extCount;
     vkEnumerateDeviceExtensionProperties(dev, nullptr, &extCount, nullptr);
@@ -48,7 +46,7 @@ bool checkDeviceExtensionSupport(
         extNames.emplace(ext.extensionName);
     }
 
-    bool deviceSupported=true;
+    bool deviceSupported = true;
 
     for (auto const& extName : requiredExts)
     {
@@ -70,18 +68,12 @@ bool deviceSuitable(VkPhysicalDevice const& dev)
     vkGetPhysicalDeviceProperties(dev, &properties);
     vkGetPhysicalDeviceFeatures(dev, &features);
 
-    return
-    checkDeviceExtensionSupport(dev)
-        && features.tessellationShader
-        && features.geometryShader
-        && features.samplerAnisotropy;
+    return checkDeviceExtensionSupport(dev) && features.tessellationShader
+           && features.geometryShader && features.samplerAnisotropy;
 }
 
-WindowBase::WindowBase(
-        size_t const& width,
-        size_t const& height,
-        std::string windowTitle) :
-    width(width), height(height), title(std::move(windowTitle))
+WindowBase::WindowBase(size_t const& width, size_t const& height, std::string windowTitle)
+    : width(width), height(height), title(std::move(windowTitle))
 {
     glfwInit();
 
@@ -89,8 +81,8 @@ WindowBase::WindowBase(
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     window = glfwCreateWindow(
-            static_cast<int>(width), static_cast<int>(height),
-            title.c_str(), nullptr, nullptr);
+        static_cast<int>(width), static_cast<int>(height), title.c_str(), nullptr, nullptr
+    );
 
     // instance creation
     CHECK_VK_SUCCESS(initInstance(), ErrorMessages::FAILED_CANNOT_CREATE_INSTANCE);
@@ -112,28 +104,24 @@ VkDebugUtilsMessengerCreateInfoEXT WindowBase::createDebugInfo()
 {
     VkDebugUtilsMessengerCreateInfoEXT dbgInfo = {};
     dbgInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    dbgInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-                              VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                              VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    dbgInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                          VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                          VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    dbgInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
+                              | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+                              | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    dbgInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+                          | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
+                          | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
     dbgInfo.pfnUserCallback = debugCallback;
     dbgInfo.pUserData = reinterpret_cast<void*>(this);
 
     return dbgInfo;
 }
 
-
 VkResult WindowBase::setupDebugMessenger()
 {
     auto createInfo = createDebugInfo();
     auto createDbgFn = getVkExtension<
-            PFN_vkCreateDebugUtilsMessengerEXT,
-            VkInstance, VkDebugUtilsMessengerCreateInfoEXT const*,
-            VkAllocationCallbacks*,
-            VkDebugUtilsMessengerEXT*
-            >("vkCreateDebugUtilsMessengerEXT");
+        PFN_vkCreateDebugUtilsMessengerEXT, VkInstance, VkDebugUtilsMessengerCreateInfoEXT const*,
+        VkAllocationCallbacks*, VkDebugUtilsMessengerEXT*>("vkCreateDebugUtilsMessengerEXT");
     return createDbgFn(instance, &createInfo, nullptr, &this->dbgMessenger);
 }
 #endif
@@ -143,10 +131,8 @@ WindowBase::~WindowBase()
     vmaDestroyAllocator(allocator);
 #if ENABLE_VALIDATION_LAYERS == 1
     auto destroyFn = getVkExtensionVoid<
-            PFN_vkDestroyDebugUtilsMessengerEXT,
-            VkInstance, VkDebugUtilsMessengerEXT,
-            VkAllocationCallbacks const*
-            >("vkDestroyDebugUtilsMessengerEXT");
+        PFN_vkDestroyDebugUtilsMessengerEXT, VkInstance, VkDebugUtilsMessengerEXT,
+        VkAllocationCallbacks const*>("vkDestroyDebugUtilsMessengerEXT");
     destroyFn(instance, dbgMessenger, nullptr);
 #endif
     vkDestroyDevice(logicalDev, nullptr);
@@ -161,9 +147,9 @@ VkResult WindowBase::initInstance()
     VkApplicationInfo appInfo = {};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = "Hello Vulkan!";
-    appInfo.applicationVersion = VK_MAKE_API_VERSION(0,1,0,0);
+    appInfo.applicationVersion = VK_MAKE_API_VERSION(0, 1, 0, 0);
     appInfo.pEngineName = "What?";
-    appInfo.engineVersion = VK_MAKE_API_VERSION(0,1,0,0);
+    appInfo.engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 0);
     appInfo.apiVersion = VK_API_VERSION;
 
     auto extNeeded = getRequiredExts();
@@ -294,7 +280,6 @@ VkResult WindowBase::createLogicalDevice()
         throw std::runtime_error("Cannot create device queue on GPU.");
     }
 
-
     std::vector<VkDeviceQueueCreateInfo> queueCreateList;
 
     float priority = 1.f;
@@ -336,7 +321,6 @@ VkResult WindowBase::createLogicalDevice()
     vkGetDeviceQueue(logicalDev, queueFamilyIndex.presentationFamily.value(), 0, &presentQueue);
     vkGetDeviceQueue(logicalDev, queueFamilyIndex.transferQueueFamily(), 0, &transferQueue);
 
-
     return result;
 }
 
@@ -354,7 +338,6 @@ VkResult WindowBase::createSurface()
 #endif
 }
 
-
 VkResult WindowBase::createAllocator()
 {
     VmaAllocatorCreateInfo createInfo = {};
@@ -368,5 +351,5 @@ VkResult WindowBase::createAllocator()
 
 std::pair<uint32_t, uint32_t> WindowBase::size() const
 {
-    return {CAST_UINT32(width), CAST_UINT32(height) };
+    return {CAST_UINT32(width), CAST_UINT32(height)};
 }

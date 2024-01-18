@@ -4,8 +4,8 @@
 
 #include "DisposableCmdBuffer.h"
 
-DisposableCmdBuffer::DisposableCmdBuffer(VkDevice* logicalDev, VkCommandPool* pool) :
-        AVkGraphicsBase(logicalDev), cmdPool(pool), disposed(false)
+DisposableCmdBuffer::DisposableCmdBuffer(VkDevice* logicalDev, VkCommandPool* pool)
+    : AVkGraphicsBase(logicalDev), cmdPool(pool), disposed(false)
 {
     VkCommandBufferAllocateInfo allocateInfo = {};
     allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -14,20 +14,23 @@ DisposableCmdBuffer::DisposableCmdBuffer(VkDevice* logicalDev, VkCommandPool* po
     // 1 command buffer per frame buffer
     allocateInfo.commandBufferCount = 1;
 
-    CHECK_VK_SUCCESS(vkAllocateCommandBuffers(*logicalDev, &allocateInfo, &cmdBuffer),
-                     ErrorMessages::FAILED_CANNOT_CREATE_CMD_BUFFER);
+    CHECK_VK_SUCCESS(
+        vkAllocateCommandBuffers(*logicalDev, &allocateInfo, &cmdBuffer),
+        ErrorMessages::FAILED_CANNOT_CREATE_CMD_BUFFER
+    );
 
     VkCommandBufferBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-    CHECK_VK_SUCCESS(vkBeginCommandBuffer(cmdBuffer, &beginInfo),
-                     ErrorMessages::FAILED_CANNOT_BEGIN_CMD_BUFFER);
+    CHECK_VK_SUCCESS(
+        vkBeginCommandBuffer(cmdBuffer, &beginInfo), ErrorMessages::FAILED_CANNOT_BEGIN_CMD_BUFFER
+    );
 }
 
-DisposableCmdBuffer::DisposableCmdBuffer(DisposableCmdBuffer&& dcb) noexcept:
-        AVkGraphicsBase(std::move(dcb)), cmdPool(std::move(dcb.cmdPool)),
-        cmdBuffer(std::move(dcb.cmdBuffer)), disposed(std::move(dcb.disposed))
+DisposableCmdBuffer::DisposableCmdBuffer(DisposableCmdBuffer&& dcb) noexcept
+    : AVkGraphicsBase(std::move(dcb)), cmdPool(std::move(dcb.cmdPool)),
+      cmdBuffer(std::move(dcb.cmdBuffer)), disposed(std::move(dcb.disposed))
 {
 }
 
@@ -55,8 +58,9 @@ void DisposableCmdBuffer::finish()
 {
     if (initialized() && !disposed)
     {
-        CHECK_VK_SUCCESS(vkEndCommandBuffer(cmdBuffer),
-                         ErrorMessages::FAILED_CANNOT_END_CMD_BUFFER);
+        CHECK_VK_SUCCESS(
+            vkEndCommandBuffer(cmdBuffer), ErrorMessages::FAILED_CANNOT_END_CMD_BUFFER
+        );
         disposed = true;
     }
 }
@@ -70,7 +74,9 @@ DisposableCmdBuffer::~DisposableCmdBuffer()
     }
 }
 
-DisposableCmdBuffer::DisposableCmdBuffer() : AVkGraphicsBase(), disposed(true) {}
+DisposableCmdBuffer::DisposableCmdBuffer() : AVkGraphicsBase(), disposed(true)
+{
+}
 
 VkCommandBuffer& DisposableCmdBuffer::commandBuffer()
 {

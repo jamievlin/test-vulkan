@@ -4,8 +4,9 @@
 
 #include "SwapchainSupport.h"
 
-VkResult SwapchainImageSupport::createImageView(VkImage const& swapChainImage,
-                                                VkFormat const& swapchainFormat)
+VkResult SwapchainImageSupport::createImageView(
+    VkImage const& swapChainImage, VkFormat const& swapchainFormat
+)
 {
     VkImageViewCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -28,13 +29,12 @@ VkResult SwapchainImageSupport::createImageView(VkImage const& swapChainImage,
 }
 
 VkResult SwapchainImageSupport::createFramebuffer(
-        VkRenderPass const& renderPass, VkExtent2D const& extent,
-        std::optional<VkImageView> const& depthBufferImgView)
+    VkRenderPass const& renderPass, VkExtent2D const& extent,
+    std::optional<VkImageView> const& depthBufferImgView
+)
 {
     // creating frame buffer
-    std::vector<VkImageView> attachments = {
-            imageView
-    };
+    std::vector<VkImageView> attachments = {imageView};
     if (depthBufferImgView.has_value())
     {
         attachments.push_back(depthBufferImgView.value());
@@ -52,7 +52,8 @@ VkResult SwapchainImageSupport::createFramebuffer(
     return vkCreateFramebuffer(getLogicalDev(), &createInfo, nullptr, &frameBuffer);
 }
 
-SwapchainImageSupport& SwapchainImageSupport::operator=(SwapchainImageSupport&& swpImgSupport) noexcept
+SwapchainImageSupport& SwapchainImageSupport::operator=(SwapchainImageSupport&& swpImgSupport
+) noexcept
 {
     if (initialized())
     {
@@ -71,27 +72,27 @@ SwapchainImageSupport& SwapchainImageSupport::operator=(SwapchainImageSupport&& 
     return *this;
 }
 
-SwapchainImageSupport::SwapchainImageSupport(SwapchainImageSupport&& swpImgSupport) noexcept:
-    AVkGraphicsBase(std::move(swpImgSupport)),
-    imageView(std::move(swpImgSupport.imageView)), frameBuffer(std::move(swpImgSupport.frameBuffer)),
-    imagesInFlight(std::move(swpImgSupport.imagesInFlight))
+SwapchainImageSupport::SwapchainImageSupport(SwapchainImageSupport&& swpImgSupport) noexcept
+    : AVkGraphicsBase(std::move(swpImgSupport)), imageView(std::move(swpImgSupport.imageView)),
+      frameBuffer(std::move(swpImgSupport.frameBuffer)),
+      imagesInFlight(std::move(swpImgSupport.imagesInFlight))
 {
     swpImgSupport.imageView = VK_NULL_HANDLE;
     swpImgSupport.frameBuffer = VK_NULL_HANDLE;
     swpImgSupport.imagesInFlight = VK_NULL_HANDLE;
 }
 
-SwapchainImageSupport::SwapchainImageSupport(VkDevice* logicalDev, VkRenderPass const& renderPass,
-                                             VkExtent2D const& extent, VkImage const& swapChainImage,
-                                             VkFormat const& swapchainFormat,
-                                             std::optional<VkImageView> const& depthBufferImgView): AVkGraphicsBase(logicalDev)
+SwapchainImageSupport::SwapchainImageSupport(
+    VkDevice* logicalDev, VkRenderPass const& renderPass, VkExtent2D const& extent,
+    VkImage const& swapChainImage, VkFormat const& swapchainFormat,
+    std::optional<VkImageView> const& depthBufferImgView
+)
+    : AVkGraphicsBase(logicalDev)
 {
+    CHECK_VK_SUCCESS(createImageView(swapChainImage, swapchainFormat), "Cannot create image view!");
     CHECK_VK_SUCCESS(
-            createImageView(swapChainImage, swapchainFormat),
-            "Cannot create image view!");
-    CHECK_VK_SUCCESS(
-            createFramebuffer(renderPass, extent, depthBufferImgView),
-            "Cannot create framebuffer!");
+        createFramebuffer(renderPass, extent, depthBufferImgView), "Cannot create framebuffer!"
+    );
 }
 
 SwapchainImageSupport::~SwapchainImageSupport()

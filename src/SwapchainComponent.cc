@@ -5,11 +5,10 @@
 #include "SwapchainComponent.h"
 #include "Image.h"
 
-VkResult
-SwapchainComponents::initSwapChain(
-        VkPhysicalDevice const& physDevice,
-        std::pair <size_t, size_t> const& windowHeight,
-        VkSurfaceKHR const& surface)
+VkResult SwapchainComponents::initSwapChain(
+    VkPhysicalDevice const& physDevice, std::pair<size_t, size_t> const& windowHeight,
+    VkSurfaceKHR const& surface
+)
 {
 
     if (!detail.adequate())
@@ -17,14 +16,12 @@ SwapchainComponents::initSwapChain(
         throw std::runtime_error(ErrorMessages::FAILED_CREATE_SWAP_CHAIN);
     }
 
-    swapchainFormat=detail.selectFmt();
-    swapchainExtent=detail.chooseSwapExtent(
-            CAST_UINT32(windowHeight.first),
-            CAST_UINT32(windowHeight.second));
+    swapchainFormat = detail.selectFmt();
+    swapchainExtent =
+        detail.chooseSwapExtent(CAST_UINT32(windowHeight.first), CAST_UINT32(windowHeight.second));
 
-    uint32_t imgCount=std::min(
-            detail.capabilities.minImageCount + 1,
-            detail.capabilities.maxImageCount);
+    uint32_t imgCount =
+        std::min(detail.capabilities.minImageCount + 1, detail.capabilities.maxImageCount);
     if (imgCount == 0)
     {
         throw std::runtime_error(ErrorMessages::FAILED_DRIVER_NOT_SUPPORT_IMGBUFFER);
@@ -46,10 +43,7 @@ SwapchainComponents::initSwapChain(
     {
         throw std::runtime_error(ErrorMessages::FAILED_CREATE_QUEUE_FAMILY);
     }
-    uint32_t idx[] = {
-            fam.graphicsFamily.value(),
-            fam.presentationFamily.value()
-    };
+    uint32_t idx[] = {fam.graphicsFamily.value(), fam.presentationFamily.value()};
 
     if (fam.graphicsFamily != fam.presentationFamily)
     {
@@ -107,10 +101,13 @@ VkResult SwapchainComponents::createRenderPasses(VkPhysicalDevice const& physDev
     VkSubpassDependency dep = {};
     dep.srcSubpass = VK_SUBPASS_EXTERNAL;
     dep.dstSubpass = 0;
-    dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dep.srcStageMask =
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     dep.srcAccessMask = 0;
-    dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    dep.dstStageMask =
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dep.dstAccessMask =
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
     VkSubpassDescription subpass = {};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -118,10 +115,7 @@ VkResult SwapchainComponents::createRenderPasses(VkPhysicalDevice const& physDev
     subpass.pColorAttachments = &colorAttachmentRef;
     subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
-    std::vector<VkAttachmentDescription> attachments = {
-            colorAttachment,
-            depthAttachment
-            };
+    std::vector<VkAttachmentDescription> attachments = {colorAttachment, depthAttachment};
 
     VkRenderPassCreateInfo renderPassCreateInfo = {};
     renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -136,14 +130,15 @@ VkResult SwapchainComponents::createRenderPasses(VkPhysicalDevice const& physDev
 }
 
 SwapchainComponents::SwapchainComponents(
-        VkDevice* logicalDev, VkPhysicalDevice const& physDevice,
-        VkSurfaceKHR const& surface, std::pair<size_t, size_t> const& windowSize,
-        std::optional<VkImageView> const& depthBufferImgView) :
-            AVkGraphicsBase(logicalDev), detail(physDevice, surface)
+    VkDevice* logicalDev, VkPhysicalDevice const& physDevice, VkSurfaceKHR const& surface,
+    std::pair<size_t, size_t> const& windowSize,
+    std::optional<VkImageView> const& depthBufferImgView
+)
+    : AVkGraphicsBase(logicalDev), detail(physDevice, surface)
 {
     CHECK_VK_SUCCESS(
-            initSwapChain(physDevice, windowSize, surface),
-            ErrorMessages::FAILED_CREATE_SWAP_CHAIN);
+        initSwapChain(physDevice, windowSize, surface), ErrorMessages::FAILED_CREATE_SWAP_CHAIN
+    );
 
     // get swap chain image
     uint32_t imageCount;
@@ -153,28 +148,29 @@ SwapchainComponents::SwapchainComponents(
 
     CHECK_VK_SUCCESS(createRenderPasses(physDevice), ErrorMessages::FAILED_CREATE_RENDER_PASS);
 
-    std::transform(swapChainImages.begin(), swapChainImages.end(),
-                   std::back_inserter(swapchainSupport),
-                   [this, &fmt=swapchainFormat.format, &depthBufferImgView](VkImage& swapChainImg)
-                   {
-                       return SwapchainImageSupport(
-                               this->getLogicalDevPtr(), this->renderPass, this->swapchainExtent,
-                               swapChainImg, fmt, depthBufferImgView);
-                   });
+    std::transform(
+        swapChainImages.begin(), swapChainImages.end(), std::back_inserter(swapchainSupport),
+        [this, &fmt = swapchainFormat.format, &depthBufferImgView](VkImage& swapChainImg)
+        {
+            return SwapchainImageSupport(
+                this->getLogicalDevPtr(), this->renderPass, this->swapchainExtent, swapChainImg,
+                fmt, depthBufferImgView
+            );
+        }
+    );
 
     CHECK_VK_SUCCESS(createDescriptorPool(), ErrorMessages::FAILED_CANNOT_CREATE_DESC_POOL);
 }
 
-SwapchainComponents::SwapchainComponents(SwapchainComponents&& swpchainComp) noexcept:
-        AVkGraphicsBase(std::move(swpchainComp)),
-        detail(std::move(swpchainComp.detail)),
-        swapChain(std::move(swpchainComp.swapChain)),
-        swapChainImages(std::move(swpchainComp.swapChainImages)),
-        swapchainFormat(std::move(swpchainComp.swapchainFormat)),
-        swapchainExtent(std::move(swpchainComp.swapchainExtent)),
-        swapchainSupport(std::move(swpchainComp.swapchainSupport)),
-        renderPass(std::move(swpchainComp.renderPass)),
-        descriptorPool(std::move(swpchainComp.descriptorPool))
+SwapchainComponents::SwapchainComponents(SwapchainComponents&& swpchainComp) noexcept
+    : AVkGraphicsBase(std::move(swpchainComp)), detail(std::move(swpchainComp.detail)),
+      swapChain(std::move(swpchainComp.swapChain)),
+      swapChainImages(std::move(swpchainComp.swapChainImages)),
+      swapchainFormat(std::move(swpchainComp.swapchainFormat)),
+      swapchainExtent(std::move(swpchainComp.swapchainExtent)),
+      swapchainSupport(std::move(swpchainComp.swapchainSupport)),
+      renderPass(std::move(swpchainComp.renderPass)),
+      descriptorPool(std::move(swpchainComp.descriptorPool))
 {
 }
 
@@ -230,7 +226,6 @@ VkResult SwapchainComponents::createDescriptorPool()
     poolSize[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     poolSize[3].descriptorCount = imageCount();
 
-
     VkDescriptorPoolCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     createInfo.poolSizeCount = 4;
@@ -238,5 +233,4 @@ VkResult SwapchainComponents::createDescriptorPool()
     createInfo.maxSets = 3 * imageCount();
 
     return vkCreateDescriptorPool(getLogicalDev(), &createInfo, nullptr, &descriptorPool);
-
 }

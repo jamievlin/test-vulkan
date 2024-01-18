@@ -21,19 +21,21 @@ SwapChainsDetail::SwapChainsDetail(VkPhysicalDevice const& dev, VkSurfaceKHR con
     presentModes.resize(presentModeCount);
     if (presentModeCount > 0)
     {
-        vkGetPhysicalDeviceSurfacePresentModesKHR(dev, surface, &presentModeCount, presentModes.data());
+        vkGetPhysicalDeviceSurfacePresentModesKHR(
+            dev, surface, &presentModeCount, presentModes.data()
+        );
     }
 }
 
 [[nodiscard]]
 bool SwapChainsDetail::adequate() const
 {
-    return not (formats.empty() or presentModes.empty());
+    return not(formats.empty() or presentModes.empty());
 }
 
 VkSurfaceFormatKHR SwapChainsDetail::selectFmt(
-        VkFormat const& preferredFmt,
-        VkColorSpaceKHR const& preferredColorSpace) const
+    VkFormat const& preferredFmt, VkColorSpaceKHR const& preferredColorSpace
+) const
 {
     for (auto const& fmt : formats)
     {
@@ -45,8 +47,7 @@ VkSurfaceFormatKHR SwapChainsDetail::selectFmt(
     return formats[0];
 }
 
-VkPresentModeKHR SwapChainsDetail::chooseSwapPresentMode(
-        VkPresentModeKHR const& preferred) const
+VkPresentModeKHR SwapChainsDetail::chooseSwapPresentMode(VkPresentModeKHR const& preferred) const
 {
     for (auto const& mode : presentModes)
     {
@@ -59,7 +60,9 @@ VkPresentModeKHR SwapChainsDetail::chooseSwapPresentMode(
     return VK_PRESENT_MODE_FIFO_KHR; // default
 }
 
-VkExtent2D SwapChainsDetail::chooseSwapExtent(uint32_t const& preferredWidth, uint32_t const& preferredHeight) const
+VkExtent2D SwapChainsDetail::chooseSwapExtent(
+    uint32_t const& preferredWidth, uint32_t const& preferredHeight
+) const
 {
     if (capabilities.currentExtent.width != UINT32_MAX)
     {
@@ -69,14 +72,12 @@ VkExtent2D SwapChainsDetail::chooseSwapExtent(uint32_t const& preferredWidth, ui
     // else
     VkExtent2D actualExtent = {};
     actualExtent.width = std::clamp(
-            preferredWidth,
-            capabilities.minImageExtent.width,
-            capabilities.maxImageExtent.width);
+        preferredWidth, capabilities.minImageExtent.width, capabilities.maxImageExtent.width
+    );
 
     actualExtent.height = std::clamp(
-            preferredHeight,
-            capabilities.minImageExtent.height,
-            capabilities.maxImageExtent.height);
+        preferredHeight, capabilities.minImageExtent.height, capabilities.maxImageExtent.height
+    );
 
     return actualExtent;
 }

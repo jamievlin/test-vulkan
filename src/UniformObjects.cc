@@ -17,7 +17,8 @@ VkDescriptorSetLayoutBinding UniformObjects::descriptorSetLayout(uint32_t bindin
 }
 
 VkWriteDescriptorSet UniformObjects::descriptorWrite(
-        uint32_t const& binding, VkDescriptorBufferInfo const& bufferInfo, VkDescriptorSet& dest)
+    uint32_t const& binding, VkDescriptorBufferInfo const& bufferInfo, VkDescriptorSet& dest
+)
 {
     VkWriteDescriptorSet descriptorWrite = {};
     descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -54,11 +55,9 @@ void MeshUniform::setModelMatrix(glm::mat4 const& newModel)
     computeInvDual();
 }
 
-VkWriteDescriptorSet
-MeshUniform::descriptorWrite(
-        uint32_t const& binding,
-        VkDescriptorBufferInfo const& bufferInfo,
-        VkDescriptorSet& dest)
+VkWriteDescriptorSet MeshUniform::descriptorWrite(
+    uint32_t const& binding, VkDescriptorBufferInfo const& bufferInfo, VkDescriptorSet& dest
+)
 {
     VkWriteDescriptorSet descriptorWrite = {};
     descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

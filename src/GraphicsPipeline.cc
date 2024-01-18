@@ -5,12 +5,10 @@
 #include "GraphicsPipeline.h"
 
 VkResult GraphicsPipeline::createGraphicsPipeline(
-        std::string const& vertShaderName,
-        std::string const& fragShaderName,
-        VkExtent2D const& extent,
-        VkRenderPass const& renderPass,
-        std::vector<VkDescriptorSetLayout> const& descriptorSetLayout,
-        bool enableDepthTest)
+    std::string const& vertShaderName, std::string const& fragShaderName, VkExtent2D const& extent,
+    VkRenderPass const& renderPass, std::vector<VkDescriptorSetLayout> const& descriptorSetLayout,
+    bool enableDepthTest
+)
 {
     auto vertShader = Shaders::createShaderModuleChecked(getLogicalDev(), vertShaderName);
     auto fragShader = Shaders::createShaderModuleChecked(getLogicalDev(), fragShaderName);
@@ -48,12 +46,12 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
     viewport.x = 0.0f;
     viewport.y = 0.0f;
     viewport.width = (float)extent.width;
-    viewport.height=(float)extent.height;
-    viewport.minDepth=0.0f;
-    viewport.maxDepth=1.0f;
+    viewport.height = (float)extent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
 
     VkRect2D scissor = {};
-    scissor.offset = {0,0};
+    scissor.offset = {0, 0};
     scissor.extent = extent;
     VkPipelineViewportStateCreateInfo viewportState = {};
     viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -86,11 +84,8 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
     multisampleInfo.alphaToOneEnable = VK_FALSE;
 
     VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
-    colorBlendAttachment.colorWriteMask =
-            VK_COLOR_COMPONENT_R_BIT |
-            VK_COLOR_COMPONENT_G_BIT |
-            VK_COLOR_COMPONENT_B_BIT |
-            VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                                          | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
     colorBlendAttachment.blendEnable = VK_FALSE;
     colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
@@ -119,8 +114,12 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
     pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
     pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
-    CHECK_VK_SUCCESS(vkCreatePipelineLayout(getLogicalDev(), &pipelineLayoutCreateInfo, nullptr, &pipelineLayout),
-                     "Cannot create pipeline layout!");
+    CHECK_VK_SUCCESS(
+        vkCreatePipelineLayout(
+            getLogicalDev(), &pipelineLayoutCreateInfo, nullptr, &pipelineLayout
+        ),
+        "Cannot create pipeline layout!"
+    );
 
     VkPipelineDepthStencilStateCreateInfo depthStencil {};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -138,7 +137,6 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
         depthStencil.front = {};
         depthStencil.back = {};
     }
-
 
     VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
     pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -161,8 +159,8 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
     pipelineCreateInfo.basePipelineIndex = -1;
 
     auto retFinal = vkCreateGraphicsPipelines(
-            getLogicalDev(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr,
-            &pipeline);
+        getLogicalDev(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline
+    );
     vkDestroyShaderModule(getLogicalDev(), vertShader, nullptr);
     vkDestroyShaderModule(getLogicalDev(), fragShader, nullptr);
 
@@ -170,27 +168,23 @@ VkResult GraphicsPipeline::createGraphicsPipeline(
 }
 
 GraphicsPipeline::GraphicsPipeline(
-        VkDevice* device,
-        VkPhysicalDevice const& physDev,
-        VkCommandPool* cmdPool,
-        std::string const& vertShader,
-        std::string const& fragShader,
-        VkExtent2D const& extent,
-        size_t const& swpchainImgCount,
-        VkRenderPass const& renderPass,
-        std::vector<VkDescriptorSetLayout> const& descriptorSetLayout,
-        bool enableDepthTest) :
-        AVkGraphicsBase(device), cmdPool(cmdPool)
+    VkDevice* device, VkPhysicalDevice const& physDev, VkCommandPool* cmdPool,
+    std::string const& vertShader, std::string const& fragShader, VkExtent2D const& extent,
+    size_t const& swpchainImgCount, VkRenderPass const& renderPass,
+    std::vector<VkDescriptorSetLayout> const& descriptorSetLayout, bool enableDepthTest
+)
+    : AVkGraphicsBase(device), cmdPool(cmdPool)
 {
     CHECK_VK_SUCCESS(
-            createGraphicsPipeline(
-                    vertShader, fragShader, extent, renderPass, descriptorSetLayout,
-                    enableDepthTest),
-            ErrorMessages::CREATE_GRAPHICS_PIPELINE_FAILED);
+        createGraphicsPipeline(
+            vertShader, fragShader, extent, renderPass, descriptorSetLayout, enableDepthTest
+        ),
+        ErrorMessages::CREATE_GRAPHICS_PIPELINE_FAILED
+    );
 
     CHECK_VK_SUCCESS(
-            createCmdBuffers(swpchainImgCount),
-            ErrorMessages::CREATE_COMMAND_BUFFERS_FAILED);
+        createCmdBuffers(swpchainImgCount), ErrorMessages::CREATE_COMMAND_BUFFERS_FAILED
+    );
 }
 
 VkResult GraphicsPipeline::createCmdBuffers(size_t const& swpchainImgCount)
@@ -206,11 +200,10 @@ VkResult GraphicsPipeline::createCmdBuffers(size_t const& swpchainImgCount)
     return vkAllocateCommandBuffers(getLogicalDev(), &allocateInfo, cmdBuffers.data());
 }
 
-GraphicsPipeline::GraphicsPipeline(GraphicsPipeline&& graphicspipeline) noexcept:
-        AVkGraphicsBase(std::move(graphicspipeline)),
-        pipeline(std::move(graphicspipeline.pipeline)),
-        pipelineLayout(std::move(graphicspipeline.pipelineLayout)),
-        cmdBuffers(std::move(graphicspipeline.cmdBuffers))
+GraphicsPipeline::GraphicsPipeline(GraphicsPipeline&& graphicspipeline) noexcept
+    : AVkGraphicsBase(std::move(graphicspipeline)), pipeline(std::move(graphicspipeline.pipeline)),
+      pipelineLayout(std::move(graphicspipeline.pipelineLayout)),
+      cmdBuffers(std::move(graphicspipeline.cmdBuffers))
 {
 }
 
@@ -218,9 +211,9 @@ GraphicsPipeline& GraphicsPipeline::operator=(GraphicsPipeline&& graphicspipelin
 {
     if (initialized())
     {
-        vkFreeCommandBuffers(getLogicalDev(), *cmdPool,
-                             CAST_UINT32(cmdBuffers.size()),
-                             cmdBuffers.data());
+        vkFreeCommandBuffers(
+            getLogicalDev(), *cmdPool, CAST_UINT32(cmdBuffers.size()), cmdBuffers.data()
+        );
         vkDestroyPipeline(getLogicalDev(), pipeline, nullptr);
         vkDestroyPipelineLayout(getLogicalDev(), pipelineLayout, nullptr);
     }
@@ -232,15 +225,13 @@ GraphicsPipeline& GraphicsPipeline::operator=(GraphicsPipeline&& graphicspipelin
     return *this;
 }
 
-
-
 GraphicsPipeline::~GraphicsPipeline()
 {
     if (initialized())
     {
-        vkFreeCommandBuffers(getLogicalDev(), *cmdPool,
-                             CAST_UINT32(cmdBuffers.size()),
-                             cmdBuffers.data());
+        vkFreeCommandBuffers(
+            getLogicalDev(), *cmdPool, CAST_UINT32(cmdBuffers.size()), cmdBuffers.data()
+        );
         vkDestroyPipeline(getLogicalDev(), pipeline, nullptr);
         vkDestroyPipelineLayout(getLogicalDev(), pipelineLayout, nullptr);
         pipeline = VK_NULL_HANDLE;

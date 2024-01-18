@@ -6,10 +6,10 @@
 #include "Image.h"
 #include "Lights.h"
 
-void
-ShadowmapPipeline::createGraphicsPipeline(std::string const& vertShaderName,
-                                          uint32_t const& shadowResolution,
-                                          std::vector<VkDescriptorSetLayout>& descSetLayouts)
+void ShadowmapPipeline::createGraphicsPipeline(
+    std::string const& vertShaderName, uint32_t const& shadowResolution,
+    std::vector<VkDescriptorSetLayout>& descSetLayouts
+)
 {
     VkExtent2D extent;
     extent.height = shadowResolution;
@@ -54,12 +54,12 @@ ShadowmapPipeline::createGraphicsPipeline(std::string const& vertShaderName,
     viewport.x = 0.0f;
     viewport.y = 0.0f;
     viewport.width = (float)shadowResolution;
-    viewport.height=(float)shadowResolution;
-    viewport.minDepth=0.0f;
-    viewport.maxDepth=1.0f;
+    viewport.height = (float)shadowResolution;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
 
     VkRect2D scissor = {};
-    scissor.offset = {0,0};
+    scissor.offset = {0, 0};
     scissor.extent = extent;
     VkPipelineViewportStateCreateInfo viewportState = {};
     viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -92,11 +92,8 @@ ShadowmapPipeline::createGraphicsPipeline(std::string const& vertShaderName,
     multisampleInfo.alphaToOneEnable = VK_FALSE;
 
     VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
-    colorBlendAttachment.colorWriteMask =
-            VK_COLOR_COMPONENT_R_BIT |
-            VK_COLOR_COMPONENT_G_BIT |
-            VK_COLOR_COMPONENT_B_BIT |
-            VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                                          | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
     colorBlendAttachment.blendEnable = VK_FALSE;
     colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
@@ -125,8 +122,12 @@ ShadowmapPipeline::createGraphicsPipeline(std::string const& vertShaderName,
     pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
     pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
-    CHECK_VK_SUCCESS(vkCreatePipelineLayout(getLogicalDev(), &pipelineLayoutCreateInfo, nullptr, &pipelineLayout),
-                     "Cannot create pipeline layout!");
+    CHECK_VK_SUCCESS(
+        vkCreatePipelineLayout(
+            getLogicalDev(), &pipelineLayoutCreateInfo, nullptr, &pipelineLayout
+        ),
+        "Cannot create pipeline layout!"
+    );
 
     VkPipelineDepthStencilStateCreateInfo depthStencil {};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -141,7 +142,6 @@ ShadowmapPipeline::createGraphicsPipeline(std::string const& vertShaderName,
     depthStencil.stencilTestEnable = VK_FALSE;
     depthStencil.front = {};
     depthStencil.back = {};
-
 
     VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
     pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -163,10 +163,12 @@ ShadowmapPipeline::createGraphicsPipeline(std::string const& vertShaderName,
     pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
     pipelineCreateInfo.basePipelineIndex = -1;
 
-    CHECK_VK_SUCCESS(vkCreateGraphicsPipelines(
-            getLogicalDev(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr,
-            &pipeline),
-                     "Cannot create shadow map render pass!");
+    CHECK_VK_SUCCESS(
+        vkCreateGraphicsPipelines(
+            getLogicalDev(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline
+        ),
+        "Cannot create shadow map render pass!"
+    );
     vkDestroyShaderModule(getLogicalDev(), vertShader, nullptr);
 }
 
@@ -212,7 +214,7 @@ VkRenderPass ShadowmapPipeline::createRenderPass(VkPhysicalDevice const& physDev
     subpass.pColorAttachments = nullptr; //&colorAttachmentRef;
     subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
-    VkAttachmentDescription attachments[] = { /*colorAttachment,*/ depthAttachment};
+    VkAttachmentDescription attachments[] = {/*colorAttachment,*/ depthAttachment};
 
     VkRenderPassCreateInfo renderPassCreateInfo = {};
     renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -224,8 +226,9 @@ VkRenderPass ShadowmapPipeline::createRenderPass(VkPhysicalDevice const& physDev
     renderPassCreateInfo.pDependencies = nullptr;
 
     CHECK_VK_SUCCESS(
-            vkCreateRenderPass(getLogicalDev(), &renderPassCreateInfo, nullptr, &newRenderPass),
-            "Cannot create shadow map render pass!");
+        vkCreateRenderPass(getLogicalDev(), &renderPassCreateInfo, nullptr, &newRenderPass),
+        "Cannot create shadow map render pass!"
+    );
     return newRenderPass;
 }
 
@@ -252,30 +255,21 @@ VkSamplerCreateInfo ShadowmapPipeline::createSamplerInfo()
 }
 
 ShadowmapPipeline::ShadowmapPipeline(
-        VkDevice* device,
-        VmaAllocator* allocator,
-        VkPhysicalDevice const& physDev,
-        std::string const& vertShader,
-        uint32_t const& shadowResolution,
-        size_t const& swpchainImgCount,
-        std::vector<VkDescriptorSetLayout>& descSetLayouts,
-        VkCommandPool& cmdPool) :
-        AVkGraphicsBase(device), cmdPool(cmdPool), shadowMapRes(shadowResolution)
+    VkDevice* device, VmaAllocator* allocator, VkPhysicalDevice const& physDev,
+    std::string const& vertShader, uint32_t const& shadowResolution, size_t const& swpchainImgCount,
+    std::vector<VkDescriptorSetLayout>& descSetLayouts, VkCommandPool& cmdPool
+)
+    : AVkGraphicsBase(device), cmdPool(cmdPool), shadowMapRes(shadowResolution)
 {
     // descSetLayout = createDescSetLayout();
     renderPass = createRenderPass(physDev);
 
     depthTarget = std::make_unique<Image::Image>(
-            device, allocator, std::make_pair(shadowResolution, shadowResolution),
-            VK_FORMAT_D32_SFLOAT,
-            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            createSamplerInfo(),
-            nullopt,
-            VK_IMAGE_TILING_OPTIMAL,
-            1,
-            VK_IMAGE_LAYOUT_UNDEFINED,
-            VK_IMAGE_ASPECT_DEPTH_BIT);
+        device, allocator, std::make_pair(shadowResolution, shadowResolution), VK_FORMAT_D32_SFLOAT,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, createSamplerInfo(), nullopt, VK_IMAGE_TILING_OPTIMAL,
+        1, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_ASPECT_DEPTH_BIT
+    );
     /*
     dummyColorTarget = std::make_unique<Image::Image>(
             device, allocator, std::make_pair(shadowResolution, shadowResolution),
@@ -289,18 +283,20 @@ ShadowmapPipeline::ShadowmapPipeline(
             VK_IMAGE_LAYOUT_UNDEFINED,
             VK_IMAGE_ASPECT_COLOR_BIT);
             */
-    shadowmapFramebuffer = createFrameBuffer(shadowResolution,
+    shadowmapFramebuffer = createFrameBuffer(
+        shadowResolution,
                                              // dummyColorTarget->imgView,
-                                             depthTarget->imgView);
+        depthTarget->imgView
+    );
     createGraphicsPipeline(vertShader, shadowResolution, descSetLayouts);
     // createDescSet(swpchainImgCount);
 
     for (int i = 0; i < swpchainImgCount; ++i)
     {
         lightDirUnifBuffer.emplace_back(
-                device, allocator, physDev,
-                nullopt, 0,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            device, allocator, physDev, nullopt, 0,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+        );
     }
 
     smapCmdBuffer.resize(swpchainImgCount);
@@ -312,20 +308,22 @@ ShadowmapPipeline::ShadowmapPipeline(
     // 1 command buffer per frame buffer
     allocateInfo.commandBufferCount = smapCmdBuffer.size();
 
-    CHECK_VK_SUCCESS(vkAllocateCommandBuffers(*device, &allocateInfo, smapCmdBuffer.data()),
-                     ErrorMessages::FAILED_CANNOT_CREATE_CMD_BUFFER);
+    CHECK_VK_SUCCESS(
+        vkAllocateCommandBuffers(*device, &allocateInfo, smapCmdBuffer.data()),
+        ErrorMessages::FAILED_CANNOT_CREATE_CMD_BUFFER
+    );
 }
 
 VkFramebuffer ShadowmapPipeline::createFrameBuffer(
-        uint32_t const& shadowResolution,
+    uint32_t const& shadowResolution,
         // VkImageView& colImgView,
-        VkImageView& imgView)
+    VkImageView& imgView
+)
 {
     VkFramebuffer fb;
     // creating frame buffer
-    std::vector<VkImageView> attachments = {
-            // colImgView,
-            imgView
+    std::vector<VkImageView> attachments = {            // colImgView,
+                                            imgView
     };
 
     VkFramebufferCreateInfo createInfo = {};
@@ -338,8 +336,9 @@ VkFramebuffer ShadowmapPipeline::createFrameBuffer(
     createInfo.layers = 1;
 
     CHECK_VK_SUCCESS(
-            vkCreateFramebuffer(getLogicalDev(), &createInfo, nullptr, &fb),
-            "Cannot create shadow map depth buffer!");
+        vkCreateFramebuffer(getLogicalDev(), &createInfo, nullptr, &fb),
+        "Cannot create shadow map depth buffer!"
+    );
 
     return fb;
 }
@@ -444,7 +443,8 @@ void ShadowmapPipeline::configureBuffers(
 
     for (int i = 0; i < lightDirSets.size(); ++i)
     {
-        VkWriteDescriptorSet writeDescSet = MeshUniform::descriptorWrite(0, sboBufferInfo, meshUnifDescSets[i]);
+        VkWriteDescriptorSet writeDescSet = MeshUniform::descriptorWrite(0, sboBufferInfo,
+meshUnifDescSets[i]);
 
         VkDescriptorBufferInfo lightUnifBufferInfo = {};
         lightUnifBufferInfo.buffer = lightDirUnifBuffer[i].vertexBuffer;

@@ -4,8 +4,8 @@
 
 #include "QueueFamilies.h"
 
-QueueFamilies::QueueFamilies(VkPhysicalDevice const& dev, VkSurfaceKHR const& surf) :
-    graphicsFamily(nullopt), presentationFamily(nullopt), transferFamily(nullopt)
+QueueFamilies::QueueFamilies(VkPhysicalDevice const& dev, VkSurfaceKHR const& surf)
+    : graphicsFamily(nullopt), presentationFamily(nullopt), transferFamily(nullopt)
 {
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(dev, &queueFamilyCount, nullptr);
@@ -31,8 +31,7 @@ QueueFamilies::QueueFamilies(VkPhysicalDevice const& dev, VkSurfaceKHR const& su
             presentationFamily = i;
         }
 
-        if (queueFlags & VK_QUEUE_TRANSFER_BIT
-            && (queueFlags & ~VK_QUEUE_GRAPHICS_BIT))
+        if (queueFlags & VK_QUEUE_TRANSFER_BIT && (queueFlags & ~VK_QUEUE_GRAPHICS_BIT))
         {
             if (i != graphicsFamily && i != presentationFamily)
             {
@@ -55,8 +54,7 @@ QueueFamilies::QueueFamilies(VkPhysicalDevice const& dev, VkSurfaceKHR const& su
 
 bool QueueFamilies::suitable() const
 {
-    return graphicsFamily.has_value() and
-        presentationFamily.has_value();
+    return graphicsFamily.has_value() and presentationFamily.has_value();
 }
 
 uint32_t QueueFamilies::transferQueueFamily()
@@ -66,5 +64,5 @@ uint32_t QueueFamilies::transferQueueFamily()
 
 std::set<uint32_t> QueueFamilies::queuesForTransfer()
 {
-    return std::set<uint32_t> { graphicsFamily.value(), transferQueueFamily() };
+    return std::set<uint32_t> {graphicsFamily.value(), transferQueueFamily()};
 }

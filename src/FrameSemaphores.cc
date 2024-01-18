@@ -6,33 +6,35 @@
 constexpr char const* CREATE_SEMAPHORE_FAILED = "Cannot create Semaphore!";
 constexpr char const* CREATE_FENCE_FAILED = "Cannot create Fence!";
 
-FrameSemaphores::FrameSemaphores(VkDevice* logicalDev, VkFenceCreateFlags const& fenceFlags) :
-        AVkGraphicsBase(logicalDev)
+FrameSemaphores::FrameSemaphores(VkDevice* logicalDev, VkFenceCreateFlags const& fenceFlags)
+    : AVkGraphicsBase(logicalDev)
 {
     VkSemaphoreCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
     CHECK_VK_SUCCESS(
-            vkCreateSemaphore(*logicalDev, &createInfo, nullptr, &imgAvailable),
-            CREATE_SEMAPHORE_FAILED);
+        vkCreateSemaphore(*logicalDev, &createInfo, nullptr, &imgAvailable), CREATE_SEMAPHORE_FAILED
+    );
     CHECK_VK_SUCCESS(
-            vkCreateSemaphore(*logicalDev, &createInfo, nullptr, &renderFinished),
-            CREATE_SEMAPHORE_FAILED);
+        vkCreateSemaphore(*logicalDev, &createInfo, nullptr, &renderFinished),
+        CREATE_SEMAPHORE_FAILED
+    );
     CHECK_VK_SUCCESS(
-            vkCreateSemaphore(*logicalDev, &createInfo, nullptr, &shadowmapFinished),
-            CREATE_SEMAPHORE_FAILED);
+        vkCreateSemaphore(*logicalDev, &createInfo, nullptr, &shadowmapFinished),
+        CREATE_SEMAPHORE_FAILED
+    );
 
     VkFenceCreateInfo fenceCreateInfo = {};
     fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceCreateInfo.flags = fenceFlags;
 
     CHECK_VK_SUCCESS(
-            vkCreateFence(*logicalDev, &fenceCreateInfo, nullptr, &inFlight),
-            CREATE_FENCE_FAILED);
+        vkCreateFence(*logicalDev, &fenceCreateInfo, nullptr, &inFlight), CREATE_FENCE_FAILED
+    );
 }
 
-FrameSemaphores::FrameSemaphores(FrameSemaphores&& frameSem) noexcept:
-        AVkGraphicsBase(std::move(frameSem))
+FrameSemaphores::FrameSemaphores(FrameSemaphores&& frameSem) noexcept
+    : AVkGraphicsBase(std::move(frameSem))
 {
     imgAvailable = frameSem.imgAvailable;
     renderFinished = frameSem.renderFinished;
@@ -69,4 +71,6 @@ FrameSemaphores::~FrameSemaphores()
     }
 }
 
-FrameSemaphores::FrameSemaphores() : AVkGraphicsBase() {}
+FrameSemaphores::FrameSemaphores() : AVkGraphicsBase()
+{
+}
