@@ -27,29 +27,28 @@ public:
     SwapchainImageBuffers& operator=(SwapchainImageBuffers const&) = delete;
 
     SwapchainImageBuffers(SwapchainImageBuffers&& sib) noexcept;
-    SwapchainImageBuffers& operator= (SwapchainImageBuffers&& sib) noexcept;
-
+    SwapchainImageBuffers& operator=(SwapchainImageBuffers&& sib) noexcept;
 
     SwapchainImageBuffers(
-            VkDevice* logicalDev,
-            VmaAllocator* allocator,
-            VkPhysicalDevice const& physDev,
-            SwapchainComponents const& swapchainComponent,
-            Image::Image& img,
-            uint32_t const& binding);
+        VkDevice* logicalDev, VmaAllocator* allocator, VkPhysicalDevice const& physDev,
+        SwapchainComponents const& swapchainComponent, Image::Image& img, uint32_t const& binding
+    );
 
-    void createUniformBuffers(VkPhysicalDevice const& physDev, SwapchainComponents const& swapchainComponent);
+    void createUniformBuffers(
+        VkPhysicalDevice const& physDev, SwapchainComponents const& swapchainComponent
+    );
     void configureBuffers(uint32_t const& binding, Image::Image& img);
-    void configureMeshBuffers(uint32_t const& binding, DynUniformObjBuffer<MeshUniform> const& unif);
+    void configureMeshBuffers(
+        uint32_t const& binding, DynUniformObjBuffer<MeshUniform> const& unif
+    );
     VkResult createDescriptorSetLayout();
     VkResult createDescriptorSets(SwapchainComponents const& swapchainComponent);
 
     VkResult createMeshDescriptorSetLayout();
     VkResult createMeshDescriptorSets(VkDescriptorPool const& descPool);
-    std::pair<UniformObjBuffer<UniformObjects>&, VkDescriptorSet& >
-            operator[](uint32_t const& i);
+    std::pair<UniformObjBuffer<UniformObjects>&, VkDescriptorSet&> operator[](uint32_t const& i);
 
 private:
-    VmaAllocator* allocator=nullptr;
-    uint32_t imgSize=0;
+    VmaAllocator* allocator = nullptr;
+    uint32_t imgSize = 0;
 };

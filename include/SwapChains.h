@@ -5,7 +5,6 @@
 #pragma once
 #include "common.h"
 
-
 struct SwapChainsDetail
 {
 public:
@@ -21,15 +20,16 @@ public:
 
     [[nodiscard]]
     VkSurfaceFormatKHR selectFmt(
-            VkFormat const& preferredFmt=VK_FORMAT_B8G8R8A8_SRGB,
-            VkColorSpaceKHR const& preferredColorSpace=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) const;
+        VkFormat const& preferredFmt = VK_FORMAT_B8G8R8A8_SRGB,
+        VkColorSpaceKHR const& preferredColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
+    ) const;
 
     [[nodiscard]]
     VkPresentModeKHR chooseSwapPresentMode(
-            VkPresentModeKHR const& preferred=VK_PRESENT_MODE_IMMEDIATE_KHR) const;
+        VkPresentModeKHR const& preferred = VK_PRESENT_MODE_IMMEDIATE_KHR
+    ) const;
 
     [[nodiscard]]
-    VkExtent2D chooseSwapExtent(
-            uint32_t const& preferredWidth,
-            uint32_t const& preferredHeight) const;
+    VkExtent2D chooseSwapExtent(uint32_t const& preferredWidth, uint32_t const& preferredHeight)
+        const;
 };

@@ -17,15 +17,15 @@ public:
     DisposableCmdBuffer& operator=(DisposableCmdBuffer const&) = delete;
 
     DisposableCmdBuffer(DisposableCmdBuffer&& dcb) noexcept;
-    DisposableCmdBuffer& operator= (DisposableCmdBuffer&& dcb) noexcept;
+    DisposableCmdBuffer& operator=(DisposableCmdBuffer&& dcb) noexcept;
 
     VkCommandBuffer& commandBuffer();
     VkResult submit(VkQueue& queue);
     void finish();
 
 private:
-    VkCommandPool* cmdPool=nullptr;
-    VkCommandBuffer cmdBuffer=VK_NULL_HANDLE;
+    VkCommandPool* cmdPool = nullptr;
+    VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
 
-    bool disposed=false;
+    bool disposed = false;
 };

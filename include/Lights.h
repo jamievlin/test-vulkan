@@ -22,10 +22,12 @@ struct Light
     glm::vec4 parameters;
 
     static VkShaderStageFlags stageFlags();
-    static VkDescriptorSetLayoutBinding directionalLightTransfLayoutBinding(uint32_t const& binding);;
+    static VkDescriptorSetLayoutBinding directionalLightTransfLayoutBinding(uint32_t const& binding
+    );
+    ;
 };
 
 namespace Lights
 {
-    VkDescriptorSetLayoutBinding shadowmapImgViewLayoutBinding(uint32_t const& binding);
+VkDescriptorSetLayoutBinding shadowmapImgViewLayoutBinding(uint32_t const& binding);
 }

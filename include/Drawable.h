@@ -11,6 +11,7 @@ class Drawable : public AVkGraphicsBase
 {
 private:
     Mesh* drawMesh;
+
 public:
     Drawable(Mesh* mesh) : drawMesh(mesh), uniform(glm::mat4())
     {
@@ -21,14 +22,12 @@ public:
     }
     ~Drawable() = default;
 
-    Drawable(Drawable&& dwb) noexcept :
-        AVkGraphicsBase(std::move(dwb)),
-        drawMesh(dwb.drawMesh),
-        uniform(std::move(dwb.uniform))
+    Drawable(Drawable&& dwb) noexcept
+        : AVkGraphicsBase(std::move(dwb)), drawMesh(dwb.drawMesh), uniform(std::move(dwb.uniform))
     {
     }
 
-    Drawable& operator= (Drawable&& dwb) noexcept
+    Drawable& operator=(Drawable&& dwb) noexcept
     {
         AVkGraphicsBase::operator=(std::move(dwb));
         drawMesh = std::move(dwb.drawMesh);

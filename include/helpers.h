@@ -14,28 +14,27 @@
 
 namespace helpers
 {
-    bool fileExists(std::string const& prefix, std::string const& file);
-    std::string searchPath(std::string const& file);
+bool fileExists(std::string const& prefix, std::string const& file);
+std::string searchPath(std::string const& file);
 
-    template<typename PixelFmt>
-    struct img
+template <typename PixelFmt> struct img
+{
+    uint32_t width, height;
+    std::vector<PixelFmt> imgData;
+
+    [[nodiscard]]
+    uint64_t totalSize() const
     {
-        uint32_t width, height;
-        std::vector<PixelFmt> imgData;
+        return width * height * sizeof(PixelFmt);
+    }
 
-        [[nodiscard]]
-        uint64_t totalSize() const
-        {
-            return width * height * sizeof(PixelFmt);
-        }
+    [[nodiscard]]
+    std::pair<uint32_t, uint32_t> size() const
+    {
+        return {width, height};
+    }
+};
+typedef img<uint32_t> img_r8g8b8a8;
 
-        [[nodiscard]]
-        std::pair<uint32_t, uint32_t> size() const
-        {
-            return { width, height };
-        }
-    };
-    typedef img<uint32_t> img_r8g8b8a8;
-
-    img_r8g8b8a8 fromPng(std::string const& file);
-}
+img_r8g8b8a8 fromPng(std::string const& file);
+} // namespace helpers

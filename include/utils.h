@@ -7,29 +7,35 @@
 #include <cstring>
 
 #include <vulkan/vulkan.h>
-#define CREATE_STRUCT_ZERO(T, name) T name; memset(&name,0,sizeof(T));
+#define CREATE_STRUCT_ZERO(T, name) \
+    T name; \
+    memset(&name, 0, sizeof(T));
 
 // from vulkan website
 #ifndef VK_MAKE_API_VERSION
 #define VK_MAKE_API_VERSION(variant, major, minor, patch) \
-    ((((uint32_t)(variant)) << 29) | (((uint32_t)(major)) << 22) | (((uint32_t)(minor)) << 12) | ((uint32_t)(patch)))
+    ((((uint32_t)(variant)) << 29) | (((uint32_t)(major)) << 22) | (((uint32_t)(minor)) << 12) \
+     | ((uint32_t)(patch)))
 #endif
 
 #define DELETE_COPY_CONSTRUCTOR(clsname) clsname(clsname const&) = delete;
 #define DELETE_COPY_ASSIGNOP(clsname) clsname& operator=(clsname const&) = delete;
 
-#define DISALLOW_COPY(clsname) DELETE_COPY_CONSTRUCTOR(clsname); DELETE_COPY_ASSIGNOP(clsname);
-
+#define DISALLOW_COPY(clsname) \
+    DELETE_COPY_CONSTRUCTOR(clsname); \
+    DELETE_COPY_ASSIGNOP(clsname);
 
 class AVkGraphicsBase
 {
 public:
     AVkGraphicsBase() = default;
-    explicit AVkGraphicsBase(VkDevice* logicalDev) : logicalDev(logicalDev) {}
+    explicit AVkGraphicsBase(VkDevice* logicalDev) : logicalDev(logicalDev)
+    {
+    }
     virtual ~AVkGraphicsBase() = default;
 
     AVkGraphicsBase(AVkGraphicsBase const&) = delete;
-    AVkGraphicsBase& operator= (AVkGraphicsBase const&) = delete;
+    AVkGraphicsBase& operator=(AVkGraphicsBase const&) = delete;
 
     AVkGraphicsBase(AVkGraphicsBase&& obj) noexcept : logicalDev(obj.logicalDev)
     {
@@ -48,6 +54,7 @@ public:
     {
         return initialized();
     }
+
 protected:
     [[nodiscard]]
     bool initialized() const
@@ -76,7 +83,6 @@ protected:
     {
         return logicalDev;
     }
-
 
 private:
     VkDevice* logicalDev = nullptr;

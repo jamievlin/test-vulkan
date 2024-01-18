@@ -14,7 +14,7 @@ struct Vertex
     // relevant static functions
 
     static VkVertexInputBindingDescription bindingDescription();
-    static std::array<VkVertexInputAttributeDescription,3> attributeDescription();
+    static std::array<VkVertexInputAttributeDescription, 3> attributeDescription();
 };
 
 struct NVertex
@@ -25,8 +25,5 @@ struct NVertex
 
     // relevant static functions
     static VkVertexInputBindingDescription bindingDescription();
-    static std::array<VkVertexInputAttributeDescription,3> attributeDescription();
+    static std::array<VkVertexInputAttributeDescription, 3> attributeDescription();
 };
-
-
-

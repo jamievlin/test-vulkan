@@ -14,10 +14,9 @@ class Window : public WindowBase
 {
 public:
     Window(
-            size_t const& width,
-            size_t const& height,
-            std::string windowTitle,
-            float const& fov=60.f, float const& clipnear=0.1f, float const& clipfar=100.f);
+        size_t const& width, size_t const& height, std::string windowTitle, float const& fov = 60.f,
+        float const& clipnear = 0.1f, float const& clipfar = 100.f
+    );
 
     ~Window() override;
     int mainLoop();
@@ -44,6 +43,7 @@ protected:
     void createShadowmapsDescPool();
     void createShadowmapsDescSets();
     void updateShadowmapBuffer(Image::Image const& shadowMap);
+
 private:
     bool running = true;
     std::unique_ptr<SwapchainComponents> swapchainComponent;

@@ -25,18 +25,16 @@ public:
     SwapchainComponents() = default;
 
     SwapchainComponents(
-            VkDevice* logicalDev,
-            VkPhysicalDevice const& physDevice,
-            VkSurfaceKHR const& surface,
-            std::pair<size_t, size_t> const& windowSize,
-            std::optional<VkImageView> const& depthBufferImgView
-            );
+        VkDevice* logicalDev, VkPhysicalDevice const& physDevice, VkSurfaceKHR const& surface,
+        std::pair<size_t, size_t> const& windowSize,
+        std::optional<VkImageView> const& depthBufferImgView
+    );
 
     SwapchainComponents(SwapchainComponents const&) = delete;
     SwapchainComponents& operator=(SwapchainComponents const&) = delete;
 
     SwapchainComponents(SwapchainComponents&& swpchainComp) noexcept;
-    SwapchainComponents& operator= (SwapchainComponents&& swpchainComp) noexcept;
+    SwapchainComponents& operator=(SwapchainComponents&& swpchainComp) noexcept;
 
     ~SwapchainComponents();
 
@@ -45,9 +43,9 @@ public:
 
 protected:
     VkResult initSwapChain(
-            VkPhysicalDevice const& physDevice,
-            std::pair<size_t, size_t> const& windowHeight,
-            VkSurfaceKHR const& surface);
+        VkPhysicalDevice const& physDevice, std::pair<size_t, size_t> const& windowHeight,
+        VkSurfaceKHR const& surface
+    );
 
     VkResult createRenderPasses(VkPhysicalDevice const& physDevice);
     VkResult createDescriptorPool();

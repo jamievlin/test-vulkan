@@ -19,8 +19,10 @@ public:
     Mesh() = default;
     ~Mesh() = default;
 
-    Mesh(VkDevice* logicalDev, VmaAllocator* allocator, VkPhysicalDevice* physDev,
-         std::string const& objFile);
+    Mesh(
+        VkDevice* logicalDev, VmaAllocator* allocator, VkPhysicalDevice* physDev,
+        std::string const& objFile
+    );
 
     [[nodiscard]]
     size_t idxOffset() const;
@@ -35,6 +37,7 @@ public:
 
     Mesh(Mesh&& mesh) noexcept;
     Mesh& operator=(Mesh&& mesh) noexcept;
+
 private:
     std::vector<NVertex> verts;
     std::vector<uint32_t> indices;
@@ -42,5 +45,3 @@ private:
     VmaAllocator* allocator = nullptr;
     VkPhysicalDevice* physDev = nullptr;
 };
-
-

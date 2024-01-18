@@ -23,5 +23,3 @@ public:
 
     std::set<uint32_t> queuesForTransfer();
 };
-
-

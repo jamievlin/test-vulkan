@@ -42,16 +42,16 @@
 
 #include <vk_mem_alloc.h>
 
-
-using std::optional;
 using std::nullopt;
+using std::optional;
 
 #include "utils.h"
 #include "ErrorMessages.h"
 
 #if defined(DEBUG)
 #define PRINT_ERR_MSG(msg) std::cerr << "Error message: " << (msg) << std::endl;
-#define PRINT_ERROR_LINE() std::cerr << "Runtime error at " << __FILE__ << ":" << __LINE__ << std::endl;
+#define PRINT_ERROR_LINE() \
+    std::cerr << "Runtime error at " << __FILE__ << ":" << __LINE__ << std::endl;
 #define PRINT_RET_CODE(err) std::cerr << "Return code: " << (err) << std::endl
 #else
 #define PRINT_ERR_MSG(msg)
@@ -59,14 +59,17 @@ using std::nullopt;
 #define PRINT_RET_CODE(err)
 #endif
 
-#define CHECK_VK_SUCCESS(fn, msg) { \
-    VkResult __retcode = (fn);                                                     \
-    if (__retcode != VK_SUCCESS) {\
-    PRINT_ERROR_LINE();                                     \
-    PRINT_ERR_MSG(msg);                                                            \
-    PRINT_RET_CODE(__retcode);         \
-    assert(__retcode == VK_SUCCESS);                        \
-    }}
+#define CHECK_VK_SUCCESS(fn, msg) \
+    { \
+        VkResult __retcode = (fn); \
+        if (__retcode != VK_SUCCESS) \
+        { \
+            PRINT_ERROR_LINE(); \
+            PRINT_ERR_MSG(msg); \
+            PRINT_RET_CODE(__retcode); \
+            assert(__retcode == VK_SUCCESS); \
+        } \
+    }
 
 #define USE_HLSL 1
 #define VK_API_VERSION VK_API_VERSION_1_2

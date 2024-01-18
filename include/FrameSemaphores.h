@@ -15,14 +15,14 @@ public:
 
     FrameSemaphores();
     explicit FrameSemaphores(
-            VkDevice* logicalDev,
-            VkFenceCreateFlags const& fenceFlags=VK_FENCE_CREATE_SIGNALED_BIT);
+        VkDevice* logicalDev, VkFenceCreateFlags const& fenceFlags = VK_FENCE_CREATE_SIGNALED_BIT
+    );
 
     FrameSemaphores(FrameSemaphores const&) = delete;
     FrameSemaphores& operator=(FrameSemaphores const&) = delete;
 
     FrameSemaphores(FrameSemaphores&& frameSem) noexcept;
-    FrameSemaphores& operator= (FrameSemaphores&& frameSem) noexcept;
+    FrameSemaphores& operator=(FrameSemaphores&& frameSem) noexcept;
 
     ~FrameSemaphores();
 };
